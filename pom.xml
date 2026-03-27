@@ -17,6 +17,7 @@
 	<description>BidHub — Irish Local Auction Platform</description>
 
 	<modules>
+		<module>eureka-server</module>
 		<module>api-gateway</module>
 		<module>user-service</module>
 		<module>catalog-service</module>
