@@ -34,6 +34,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", ex.getMessage());
     }
 
+    @ExceptionHandler(AddressNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAddressNotFound(AddressNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, "ADDRESS_NOT_FOUND", ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
         return build(HttpStatus.CONFLICT, "INVALID_STATE_TRANSITION", ex.getMessage());
