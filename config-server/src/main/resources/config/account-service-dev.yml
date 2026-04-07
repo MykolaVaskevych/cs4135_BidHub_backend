@@ -12,8 +12,20 @@ spring:
       enabled: true
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
+    open-in-view: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+bidhub:
+  jwt:
+    expiration-ms: 3600000
+    issuer: bidhub-account-service
 
 logging:
   level:
