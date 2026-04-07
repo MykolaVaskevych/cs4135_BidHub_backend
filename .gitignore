@@ -19,6 +19,10 @@ target/
 *.iml
 *.ipr
 
+### JRebel (hot-reload, generated, contains absolute paths) ###
+rebel.xml
+rebel-remote.xml
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
