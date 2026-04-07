@@ -3,13 +3,10 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:account_db
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bidhub_accounts}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:bidhub}
+    password: ${DB_PASSWORD:bidhub_dev_password}
   jpa:
     hibernate:
       ddl-auto: update
