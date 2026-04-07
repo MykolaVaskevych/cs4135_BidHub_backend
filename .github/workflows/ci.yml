@@ -21,10 +21,24 @@ jobs:
           java-version: 21
           cache: maven
 
-      - name: Build and run unit tests
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      - name: Build Config Server
+        run: ./mvnw -B -pl config-server -am package -DskipTests
+
+      - name: Start Config Server
         run: |
-          chmod +x mvnw
-          ./mvnw -B test
+          nohup java -Deureka.client.enabled=false \
+            -jar config-server/target/config-server-0.0.1-SNAPSHOT.jar \
+            > config-server.log 2>&1 &
+          echo $! > config-server.pid
+
+      - name: Wait for Config Server
+        run: npx --yes wait-on@7 http://localhost:8888/actuator/health --timeout 60000
+
+      - name: Build and run unit tests
+        run: ./mvnw -B test
 
       - name: Build all services
         run: ./mvnw -B package -DskipTests
@@ -45,14 +59,21 @@ jobs:
         working-directory: bruno
         run: bru run --env ci
 
-      - name: Stop application
+      - name: Stop API Gateway
         if: always()
         run: |
           if [ -f app.pid ]; then kill $(cat app.pid) || true; fi
+
+      - name: Stop Config Server
+        if: always()
+        run: |
+          if [ -f config-server.pid ]; then kill $(cat config-server.pid) || true; fi
 
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: app-logs
-          path: app.log
+          path: |
+            app.log
+            config-server.log
