@@ -62,7 +62,7 @@ services:
     container_name: bidhub-account
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_CONFIG_IMPORT: "configserver:http://config-server:8888"
+      CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_accounts
       DB_USERNAME: bidhub
@@ -95,7 +95,7 @@ services:
     container_name: bidhub-auction
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_CONFIG_IMPORT: "configserver:http://config-server:8888"
+      CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_auction
       DB_USERNAME: bidhub
@@ -154,7 +154,7 @@ services:
     container_name: bidhub-admin
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_CONFIG_IMPORT: "configserver:http://config-server:8888"
+      CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_admin
       DB_USERNAME: bidhub
