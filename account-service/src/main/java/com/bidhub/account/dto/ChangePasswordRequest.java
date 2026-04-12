@@ -1,19 +1,14 @@
 package com.bidhub.account.dto;
 
-import com.bidhub.account.model.UserRole;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public record RegisterRequest(
-        @NotBlank @Email String email,
+public record ChangePasswordRequest(
+        @NotBlank String currentPassword,
         @NotBlank
                 @Size(min = 8, max = 128)
                 @Pattern(
                         regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d]).+$",
                         message = "must contain uppercase, lowercase, digit, and special character")
-                String password,
-        @NotBlank @Size(max = 64) String firstName,
-        @NotBlank @Size(max = 64) String lastName,
-        UserRole role) {}
+                String newPassword) {}
