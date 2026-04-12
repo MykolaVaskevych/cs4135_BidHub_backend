@@ -25,4 +25,13 @@ public class WebClientConfig {
                 .baseUrl("http://catalog-service")
                 .build();
     }
+
+    /** Load-balanced WebClient resolving "auction-service" via Eureka. */
+    @Bean
+    @LoadBalanced
+    public WebClient auctionWebClient() {
+        return WebClient.builder()
+                .baseUrl("http://auction-service")
+                .build();
+    }
 }
