@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,5 +54,10 @@ public class UserController {
     @PostMapping("/me/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("X-User-Id") UUID userId) {
         return ResponseEntity.ok(authService.refreshToken(userId));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable UUID userId) {
+        return ResponseEntity.ok(userService.getById(userId));
     }
 }
