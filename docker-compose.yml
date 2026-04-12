@@ -16,5 +16,41 @@ services:
       timeout: 3s
       retries: 10
 
+  auction-service:
+    build:
+      context: .
+      dockerfile: auction-service/Dockerfile
+    container_name: bidhub-auction
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: "configserver:http://config-server:8888"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      DB_URL: jdbc:postgresql://postgres:5432/bidhub_auction
+      DB_USERNAME: bidhub
+      DB_PASSWORD: bidhub_dev_password
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  admin-service:
+    build:
+      context: .
+      dockerfile: admin-service/Dockerfile
+    container_name: bidhub-admin
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_IMPORT: "configserver:http://config-server:8888"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      DB_URL: jdbc:postgresql://postgres:5432/bidhub_admin
+      DB_USERNAME: bidhub
+      DB_PASSWORD: bidhub_dev_password
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   bidhub_postgres_data:
