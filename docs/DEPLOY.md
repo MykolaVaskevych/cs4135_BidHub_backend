@@ -124,12 +124,14 @@ EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/
 #### account-service
 ```
 SPRING_PROFILES_ACTIVE=dev
-SPRING_CONFIG_IMPORT=configserver:http://config-server.railway.internal:8888
+CONFIG_SERVER_URL=http://config-server.railway.internal:8888
 EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/eureka/
 DB_URL=${{Postgres.DATABASE_URL}}   # or set manually: jdbc:postgresql://<host>:<port>/bidhub_accounts
 DB_USERNAME=${{Postgres.PGUSER}}
 DB_PASSWORD=${{Postgres.PGPASSWORD}}
 ```
+
+> **Why `CONFIG_SERVER_URL` not `SPRING_CONFIG_IMPORT`**: Spring Boot resolves `spring.config.import` from the config file before env var overrides apply. The `${CONFIG_SERVER_URL:http://localhost:8888}` placeholder in `application.yml/properties` is resolved at file-read time using env vars, which makes the override work reliably.
 
 #### catalog-service / order-service / payment-service / notification-service
 ```
@@ -139,7 +141,7 @@ EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/
 #### auction-service
 ```
 SPRING_PROFILES_ACTIVE=dev
-SPRING_CONFIG_IMPORT=configserver:http://config-server.railway.internal:8888
+CONFIG_SERVER_URL=http://config-server.railway.internal:8888
 EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/eureka/
 DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/bidhub_auction
 DB_USERNAME=${{Postgres.PGUSER}}
@@ -149,7 +151,7 @@ DB_PASSWORD=${{Postgres.PGPASSWORD}}
 #### admin-service
 ```
 SPRING_PROFILES_ACTIVE=dev
-SPRING_CONFIG_IMPORT=configserver:http://config-server.railway.internal:8888
+CONFIG_SERVER_URL=http://config-server.railway.internal:8888
 EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/eureka/
 DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/bidhub_admin
 DB_USERNAME=${{Postgres.PGUSER}}
