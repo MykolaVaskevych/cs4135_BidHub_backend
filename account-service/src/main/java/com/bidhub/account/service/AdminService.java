@@ -2,6 +2,7 @@ package com.bidhub.account.service;
 
 import com.bidhub.account.dto.AdminActionRequest;
 import com.bidhub.account.dto.UserResponse;
+import com.bidhub.account.dto.UserSummaryResponse;
 import com.bidhub.account.exception.SelfActionNotAllowedException;
 import com.bidhub.account.exception.UserNotFoundException;
 import com.bidhub.account.model.AccountStatus;
@@ -23,13 +24,16 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public Page<UserResponse> listUsers(AccountStatus status, String search, Pageable pageable) {
-        return userRepository.searchUsers(status, search, pageable).map(UserResponse::fromEntity);
+    public Page<UserSummaryResponse> listUsers(
+            AccountStatus status, String search, Pageable pageable) {
+        return userRepository
+                .searchUsers(status, search, pageable)
+                .map(UserSummaryResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUser(UUID userId) {
-        return UserResponse.fromEntity(loadUser(userId));
+    public UserSummaryResponse getUser(UUID userId) {
+        return UserSummaryResponse.fromEntity(loadUser(userId));
     }
 
     @Transactional
@@ -50,6 +54,7 @@ public class AdminService {
 
     @Transactional
     public UserResponse reactivateUser(UUID adminId, UUID targetId) {
+        requireDifferent(adminId, targetId, "reactivate");
         User target = loadUser(targetId);
         target.reactivate(adminId);
         return UserResponse.fromEntity(target);

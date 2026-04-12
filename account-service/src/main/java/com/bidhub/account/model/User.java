@@ -52,15 +52,17 @@ public class User {
     }
 
     public void suspend(UUID adminId, String reason) {
-        if (this.status == AccountStatus.BANNED) {
-            throw new IllegalStateException("Cannot suspend a banned user");
+        if (this.status != AccountStatus.ACTIVE) {
+            throw new IllegalStateException(
+                    "Can only suspend an ACTIVE user, current status: " + this.status);
         }
         this.status = AccountStatus.SUSPENDED;
     }
 
     public void ban(UUID adminId, String reason) {
-        if (this.status == AccountStatus.BANNED) {
-            throw new IllegalStateException("User is already banned");
+        if (this.status != AccountStatus.ACTIVE && this.status != AccountStatus.SUSPENDED) {
+            throw new IllegalStateException(
+                    "Can only ban an ACTIVE or SUSPENDED user, current status: " + this.status);
         }
         this.status = AccountStatus.BANNED;
     }

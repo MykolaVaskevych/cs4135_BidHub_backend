@@ -22,10 +22,18 @@ spring:
                 allowed-headers: "*"
                 allow-credentials: true
           routes:
+            - id: admin-service
+              uri: lb://admin-service
+              predicates:
+                - Path=/api/admin/categories/**,/api/admin/reports/**,/api/admin/moderation-actions/**,/api/admin/dashboard/**
+            - id: auction-service
+              uri: lb://auction-service
+              predicates:
+                - Path=/api/auctions/**
             - id: account-service
               uri: lb://account-service
               predicates:
-                - Path=/api/accounts/**,/api/auth/**,/api/admin/**
+                - Path=/api/accounts/**,/api/auth/**,/api/admin/users/**
 
 eureka:
   client:
