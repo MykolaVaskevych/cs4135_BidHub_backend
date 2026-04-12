@@ -7,8 +7,9 @@ import com.bidhub.account.exception.UserNotFoundException;
 import com.bidhub.account.model.AccountStatus;
 import com.bidhub.account.model.User;
 import com.bidhub.account.repository.UserRepository;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,12 +23,8 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> listUsers(AccountStatus statusFilter) {
-        List<User> users =
-                statusFilter == null
-                        ? userRepository.findAll()
-                        : userRepository.findByStatus(statusFilter);
-        return users.stream().map(UserResponse::fromEntity).toList();
+    public Page<UserResponse> listUsers(AccountStatus status, String search, Pageable pageable) {
+        return userRepository.searchUsers(status, search, pageable).map(UserResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)

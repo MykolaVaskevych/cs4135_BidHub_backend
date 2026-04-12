@@ -5,8 +5,10 @@ import com.bidhub.account.dto.UserResponse;
 import com.bidhub.account.model.AccountStatus;
 import com.bidhub.account.service.AdminService;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +32,13 @@ public class AdminController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UserResponse>> listUsers(
-            @RequestParam(required = false) AccountStatus status) {
-        return ResponseEntity.ok(adminService.listUsers(status));
+    public ResponseEntity<Page<UserResponse>> listUsers(
+            @RequestParam(required = false) AccountStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(adminService.listUsers(status, search, pageable));
     }
 
     @GetMapping("/{userId}")
