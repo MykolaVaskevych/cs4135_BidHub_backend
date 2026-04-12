@@ -6,10 +6,12 @@ import com.bidhub.account.dto.RegisterRequest;
 import com.bidhub.account.exception.AccountNotActiveException;
 import com.bidhub.account.exception.EmailAlreadyExistsException;
 import com.bidhub.account.exception.InvalidCredentialsException;
+import com.bidhub.account.exception.UserNotFoundException;
 import com.bidhub.account.model.AccountStatus;
 import com.bidhub.account.model.User;
 import com.bidhub.account.model.UserRole;
 import com.bidhub.account.repository.UserRepository;
+import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +60,20 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccountNotActiveException(user.getStatus());
+        }
+
+        return buildAuthResponse(user);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(UUID userId) {
+        User user =
+                userRepository
+                        .findById(userId)
+                        .orElseThrow(() -> new UserNotFoundException(userId));
 
         if (user.getStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException(user.getStatus());
