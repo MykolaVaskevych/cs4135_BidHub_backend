@@ -61,6 +61,11 @@
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 		</dependency>
+		<!-- resilience4j-rxjava3 — required by resilience4j-spring-boot3 FallbackConfiguration -->
+		<dependency>
+			<groupId>io.github.resilience4j</groupId>
+			<artifactId>resilience4j-rxjava3</artifactId>
+		</dependency>
 		<!-- Databases -->
 		<dependency>
 			<groupId>com.h2database</groupId>

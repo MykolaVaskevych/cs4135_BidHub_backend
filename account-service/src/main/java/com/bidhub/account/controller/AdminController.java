@@ -2,6 +2,7 @@ package com.bidhub.account.controller;
 
 import com.bidhub.account.dto.AdminActionRequest;
 import com.bidhub.account.dto.UserResponse;
+import com.bidhub.account.dto.UserSummaryResponse;
 import com.bidhub.account.model.AccountStatus;
 import com.bidhub.account.service.AdminService;
 import jakarta.validation.Valid;
@@ -32,7 +33,7 @@ public class AdminController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<UserResponse>> listUsers(
+    public ResponseEntity<Page<UserSummaryResponse>> listUsers(
             @RequestParam(required = false) AccountStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -42,7 +43,7 @@ public class AdminController {
     }
 
     @GetMapping("/{userId}")
-    public ResponseEntity<UserResponse> getUser(@PathVariable UUID userId) {
+    public ResponseEntity<UserSummaryResponse> getUser(@PathVariable UUID userId) {
         return ResponseEntity.ok(adminService.getUser(userId));
     }
 

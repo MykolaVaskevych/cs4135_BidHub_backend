@@ -10,7 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  checks:
+  # ── Unit & Integration Tests ───────────────────────────────────────────────
+  tests:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -91,3 +92,37 @@ jobs:
           path: |
             app.log
             config-server.log
+
+  # ── Docker Build Verification ──────────────────────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: eureka-server,       dockerfile: eureka-server/Dockerfile }
+          - { name: config-server,       dockerfile: config-server/Dockerfile }
+          - { name: account-service,     dockerfile: account-service/Dockerfile }
+          - { name: api-gateway,         dockerfile: api-gateway/Dockerfile }
+          - { name: catalog-service,     dockerfile: catalog-service/Dockerfile }
+          - { name: auction-service,     dockerfile: auction-service/Dockerfile }
+          - { name: order-service,       dockerfile: order-service/Dockerfile }
+          - { name: payment-service,     dockerfile: payment-service/Dockerfile }
+          - { name: notification-service, dockerfile: notification-service/Dockerfile }
+          - { name: admin-service,       dockerfile: admin-service/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image — ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: false
+          tags: bidhub/${{ matrix.service.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}

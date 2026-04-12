@@ -1,0 +1,76 @@
+server:
+  port: 8087
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:admin_db
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+logging:
+  level:
+    com.bidhub.admin: DEBUG
+    org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      account:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      auction:
+        sliding-window-size: 10
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 15s
+      catalogue:
+        sliding-window-size: 10
+        failure-rate-threshold: 40
+        wait-duration-in-open-state: 10s
+  retry:
+    instances:
+      account:
+        max-attempts: 3
+        wait-duration: 500ms
+      auction:
+        max-attempts: 3
+        wait-duration: 500ms
+      catalogue:
+        max-attempts: 2
+        wait-duration: 500ms
+  timelimiter:
+    instances:
+      account:
+        timeout-duration: 2s
+      auction:
+        timeout-duration: 2s
+      catalogue:
+        timeout-duration: 2s
