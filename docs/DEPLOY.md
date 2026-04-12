@@ -44,6 +44,37 @@ docker compose down -v
 
 ## Railway Deployment
 
+**Railway project**: https://railway.com/project/b4e59d4d-ca8e-44a0-a7ec-d0c8f7a08a87
+
+### Re-deploying after a code change
+
+```bash
+# From repo root (cs4135_BidHub):
+
+# 1. Fast-forward backend/main to pick up development work
+cd backend
+git checkout main && git merge --ff-only origin/development && git push origin main && git checkout development
+
+# 2. Update root/main submodule pointer
+cd ..
+git checkout main
+git submodule update --remote --merge
+BACKEND_SHA=$(git -C backend rev-parse HEAD)
+git add backend
+git commit -m "pin backend@${BACKEND_SHA:0:7}"
+git push origin main
+git checkout development
+
+# 3. Redeploy all services (Railway reads the current source)
+for svc in eureka-server config-server account-service catalog-service auction-service \
+           order-service payment-service notification-service admin-service api-gateway; do
+  railway up --service "$svc" --detach --path-as-root backend/
+done
+```
+
+> **Why this works**: pushing to `backend/main` and `root/main` keeps them stable.
+> Development work on `backend/development` never affects production until you explicitly fast-forward.
+
 ### One-time setup (project owner — Mykola)
 
 1. Install Railway CLI: `npm install -g @railway/cli`
