@@ -15,10 +15,11 @@ Multi-module Spring Boot microservice backend for BidHub.
 | `api-gateway` | 8080 | Edge routing + JWT validation (Spring Cloud Gateway) | Done |
 | `account-service` | 8081 | User registration, login, profile, addresses, admin moderation | Done |
 | `catalog-service` | 8082 | Catalogue read projection (search, categories) | Stub |
-| `auction-service` | 8083 | Listings, auctions, bids, watchlist | Stub |
+| `auction-service` | 8083 | Listings, auctions, bids, watchlist | Done |
 | `order-service` | 8084 | Order lifecycle | Stub |
 | `payment-service` | 8085 | Wallet, escrow, transactions | Stub |
 | `notification-service` | 8086 | In-app notifications | Stub |
+| `admin-service` | 8087 | Category management, reports, moderation, dashboard | Done |
 
 **Stub** = Maven module exists with Application class, H2 config, and health endpoint only. Ready for implementation.
 
@@ -29,35 +30,39 @@ Multi-module Spring Boot microservice backend for BidHub.
 
 ## Quick Start
 
-### 1. Start PostgreSQL (if you don't wanna use H2)
+### Full stack (recommended)
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-This starts a Postgres 16 container (`bidhub-postgres`) on port 5432 with database `bidhub_accounts`.
+Starts all 10 services + Postgres. First build takes ~5 minutes (Maven multi-stage). Subsequent builds are cached.
 
-### 2. Start infrastructure services (in order)
+| Endpoint | URL |
+|----------|-----|
+| API gateway | http://localhost:8080 |
+| Eureka dashboard | http://localhost:8761 |
+| Swagger UI (auction) | http://localhost:8083/swagger-ui/index.html |
+| Swagger UI (admin) | http://localhost:8087/swagger-ui/index.html |
+
+### Individual services (faster for development)
 
 ```bash
-cd eureka-server  && ../mvnw spring-boot:run &
-cd config-server  && ../mvnw spring-boot:run &
+# Start infra first
+./mvnw -pl eureka-server spring-boot:run &
+./mvnw -pl config-server spring-boot:run &
+
+# Then any service (account-service uses Postgres via docker compose)
+docker compose up -d postgres
+./mvnw -pl account-service spring-boot:run
 ```
 
-Wait until both are healthy, then start the gateway and business services:
+### Run tests
 
 ```bash
-cd api-gateway      && ../mvnw spring-boot:run &
-cd account-service  && ../mvnw spring-boot:run &
+./mvnw test                          # all modules
+./mvnw -pl auction-service,admin-service test   # just Mykola's services
 ```
-
-Or start any stub service the same way (e.g. `cd auction-service && ../mvnw spring-boot:run`).
-
-### 3. Verify
-
-- Eureka dashboard: http://localhost:8761
-- Gateway health: http://localhost:8080/actuator/health
-- Account health: http://localhost:8081/actuator/health
 
 ## Database
 
@@ -76,6 +81,18 @@ API tests are in the `bruno/` directory using [Bruno](https://www.usebruno.com/)
 npm install -g @usebruno/cli
 cd bruno && bru run --env ci
 ```
+
+## Deployment (Railway)
+
+All 10 services are deployed on Railway. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the full workflow including env vars and re-deploy instructions.
+
+To redeploy a service after pushing to `main`:
+
+```bash
+railway up --service <service-name> --detach --path-as-root backend/
+```
+
+Run from the root of the monorepo (`cs4135_BidHub/`).
 
 ## Pre-commit Hooks
 
