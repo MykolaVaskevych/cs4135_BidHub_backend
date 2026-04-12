@@ -13,6 +13,7 @@ import com.bidhub.admin.application.service.CategoryManagementService;
 import com.bidhub.admin.domain.exception.CategoryNotFoundException;
 import com.bidhub.admin.domain.model.Category;
 import com.bidhub.admin.domain.repository.CategoryRepository;
+import com.bidhub.admin.infrastructure.acl.CatalogueClient;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class CategoryManagementServiceTest {
 
     @Mock private CategoryRepository categoryRepository;
+    @Mock private CatalogueClient catalogueClient;
     @InjectMocks private CategoryManagementService categoryManagementService;
 
     @Test
@@ -74,15 +76,26 @@ class CategoryManagementServiceTest {
     }
 
     @Test
-    @DisplayName("deactivateCategory deactivates when INV-2 check is not blocked")
-    void deactivateCategory_deactivates() {
+    @DisplayName("deactivateCategory deactivates when no active listings (INV-2 passes)")
+    void deactivateCategory_noActiveListings_deactivates() {
         Category cat = Category.create("Tools", "desc", null);
         when(categoryRepository.findById(cat.getCategoryId())).thenReturn(Optional.of(cat));
         when(categoryRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(catalogueClient.countActiveListings(cat.getCategoryId())).thenReturn(0L);
 
-        // INV-2 blocked check: Zihan's active-count endpoint not yet available.
-        // Service deactivates when the check is skipped (dev mode).
         CategoryResponse response = categoryManagementService.deactivateCategory(cat.getCategoryId());
         assertThat(response.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("INV-2: deactivateCategory throws when catalogue-service is unreachable (fail-closed)")
+    void deactivateCategory_catalogueDown_throws() {
+        Category cat = Category.create("Tools", "desc", null);
+        when(categoryRepository.findById(cat.getCategoryId())).thenReturn(Optional.of(cat));
+        when(catalogueClient.countActiveListings(cat.getCategoryId())).thenReturn(-1L);
+
+        assertThatThrownBy(() -> categoryManagementService.deactivateCategory(cat.getCategoryId()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("INV-2");
     }
 }

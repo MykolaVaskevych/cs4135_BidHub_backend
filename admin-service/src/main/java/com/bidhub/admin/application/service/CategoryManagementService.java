@@ -6,6 +6,7 @@ import com.bidhub.admin.application.dto.UpdateCategoryRequest;
 import com.bidhub.admin.domain.exception.CategoryNotFoundException;
 import com.bidhub.admin.domain.model.Category;
 import com.bidhub.admin.domain.repository.CategoryRepository;
+import com.bidhub.admin.infrastructure.acl.CatalogueClient;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryManagementService {
 
     private final CategoryRepository categoryRepository;
+    private final CatalogueClient catalogueClient;
 
-    public CategoryManagementService(CategoryRepository categoryRepository) {
+    public CategoryManagementService(
+            CategoryRepository categoryRepository, CatalogueClient catalogueClient) {
         this.categoryRepository = categoryRepository;
+        this.catalogueClient = catalogueClient;
     }
 
     public CategoryResponse createCategory(CreateCategoryRequest req) {
@@ -55,13 +59,21 @@ public class CategoryManagementService {
     }
 
     public CategoryResponse deactivateCategory(UUID categoryId) {
-        // INV-2: should check Zihan's GET /api/catalogue/categories/{id}/active-count
-        // BLOCKED — Zihan's endpoint not yet available. Proceeding without the check for now.
-        // Once available, wire CatalogueClient and throw if count > 0.
         Category category =
                 categoryRepository
                         .findById(categoryId)
                         .orElseThrow(() -> new CategoryNotFoundException(categoryId));
+
+        // INV-2: refuse deactivation if active listings exist in this category.
+        // CatalogueClient returns -1L when catalogue-service is unreachable (fail-closed).
+        long activeCount = catalogueClient.countActiveListings(categoryId);
+        if (activeCount != 0) {
+            throw new IllegalStateException(
+                    "Cannot deactivate category: it has "
+                            + (activeCount < 0 ? "an unknown number of" : activeCount)
+                            + " active listing(s) (INV-2)");
+        }
+
         category.deactivate();
         return CategoryResponse.from(categoryRepository.save(category));
     }
