@@ -18,6 +18,9 @@ import reactor.core.publisher.Mono;
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
 
+    private static final String ADMIN_PATH_PATTERN = "/api/admin/**";
+    private static final String ADMIN_ROLE = "ADMIN";
+
     private final JwtUtil jwtUtil;
     private final List<String> openPaths;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -48,11 +51,18 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         Claims claims = jwtUtil.parseToken(token);
+        String roles = claims.get("roles", String.class);
+
+        if (isAdminPath(path) && !hasAdminRole(roles)) {
+            exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+            return exchange.getResponse().setComplete();
+        }
+
         ServerHttpRequest mutated =
                 exchange.getRequest()
                         .mutate()
                         .header("X-User-Id", claims.getSubject())
-                        .header("X-User-Roles", claims.get("roles", String.class))
+                        .header("X-User-Roles", roles)
                         .build();
 
         return chain.filter(exchange.mutate().request(mutated).build());
@@ -60,6 +70,22 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isOpen(String path) {
         return openPaths.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    }
+
+    private boolean isAdminPath(String path) {
+        return pathMatcher.match(ADMIN_PATH_PATTERN, path);
+    }
+
+    private boolean hasAdminRole(String roles) {
+        if (roles == null || roles.isBlank()) {
+            return false;
+        }
+        for (String role : roles.split(",")) {
+            if (ADMIN_ROLE.equals(role.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -37,6 +38,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AddressNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleAddressNotFound(AddressNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, "ADDRESS_NOT_FOUND", ex.getMessage());
+    }
+
+    @ExceptionHandler(SelfActionNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleSelfAction(SelfActionNotAllowedException ex) {
+        return build(HttpStatus.FORBIDDEN, "SELF_ACTION_NOT_ALLOWED", ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        return build(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Insufficient privileges");
     }
 
     @ExceptionHandler(IllegalStateException.class)
