@@ -37,11 +37,8 @@ public class ListingService {
                 .orElseThrow(() -> new ListingNotFoundException(listingId));
     }
 
-    public ListingResponse updateListing(UUID listingId, UpdateListingRequest req) {
-        Listing listing =
-                listingRepository
-                        .findById(listingId)
-                        .orElseThrow(() -> new ListingNotFoundException(listingId));
+    public ListingResponse updateListing(UUID sellerId, UUID listingId, UpdateListingRequest req) {
+        Listing listing = loadOwnedListing(sellerId, listingId);
 
         // INV-L2: reject update if associated auction already has bids
         auctionRepository
@@ -58,12 +55,20 @@ public class ListingService {
         return ListingResponse.from(listingRepository.save(listing));
     }
 
-    public void deactivateListing(UUID listingId) {
+    public void deactivateListing(UUID sellerId, UUID listingId) {
+        Listing listing = loadOwnedListing(sellerId, listingId);
+        listing.deactivate();
+        listingRepository.save(listing);
+    }
+
+    private Listing loadOwnedListing(UUID sellerId, UUID listingId) {
         Listing listing =
                 listingRepository
                         .findById(listingId)
                         .orElseThrow(() -> new ListingNotFoundException(listingId));
-        listing.deactivate();
-        listingRepository.save(listing);
+        if (!listing.getSellerId().equals(sellerId)) {
+            throw new IllegalStateException("Only the listing owner can perform this action");
+        }
+        return listing;
     }
 }

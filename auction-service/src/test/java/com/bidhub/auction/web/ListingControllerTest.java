@@ -92,7 +92,7 @@ class ListingControllerTest {
     @Test
     @DisplayName("PUT /api/auctions/listings/{id} → 200 OK")
     void updateListing_returns200() throws Exception {
-        when(listingService.updateListing(eq(LISTING_ID), any(UpdateListingRequest.class)))
+        when(listingService.updateListing(eq(SELLER_ID), eq(LISTING_ID), any(UpdateListingRequest.class)))
                 .thenReturn(sampleResponse());
 
         UpdateListingRequest req =

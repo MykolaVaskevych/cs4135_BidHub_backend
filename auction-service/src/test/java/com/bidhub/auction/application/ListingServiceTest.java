@@ -99,7 +99,7 @@ class ListingServiceTest {
 
         UpdateListingRequest req =
                 new UpdateListingRequest("New Title", "New Desc", List.of("p2.jpg"), CATEGORY_ID);
-        ListingResponse response = listingService.updateListing(listing.getListingId(), req);
+        ListingResponse response = listingService.updateListing(SELLER_ID, listing.getListingId(), req);
 
         assertThat(response.title()).isEqualTo("New Title");
     }
@@ -124,7 +124,7 @@ class ListingServiceTest {
 
         UpdateListingRequest req =
                 new UpdateListingRequest("New Title", "New Desc", List.of("p2.jpg"), CATEGORY_ID);
-        assertThatThrownBy(() -> listingService.updateListing(listing.getListingId(), req))
+        assertThatThrownBy(() -> listingService.updateListing(SELLER_ID, listing.getListingId(), req))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -135,7 +135,7 @@ class ListingServiceTest {
         when(listingRepository.findById(any())).thenReturn(Optional.of(listing));
         when(listingRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        listingService.deactivateListing(listing.getListingId());
+        listingService.deactivateListing(SELLER_ID, listing.getListingId());
 
         assertThat(listing.isActive()).isFalse();
         verify(listingRepository).save(listing);
@@ -147,7 +147,7 @@ class ListingServiceTest {
         when(listingRepository.findById(any())).thenReturn(Optional.empty());
         UpdateListingRequest req =
                 new UpdateListingRequest("T", "D", List.of("p.jpg"), CATEGORY_ID);
-        assertThatThrownBy(() -> listingService.updateListing(LISTING_ID, req))
+        assertThatThrownBy(() -> listingService.updateListing(SELLER_ID, LISTING_ID, req))
                 .isInstanceOf(ListingNotFoundException.class);
     }
 }

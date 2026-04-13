@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,7 +79,7 @@ public class Listing {
         listing.sellerId = sellerId;
         listing.title = title;
         listing.description = description;
-        listing.photos = List.copyOf(photos);
+        listing.photos = new ArrayList<>(photos);
         listing.categoryId = categoryId;
         listing.isActive = true;
         listing.createdAt = Instant.now();
@@ -134,7 +135,7 @@ public class Listing {
     }
 
     public List<String> getPhotos() {
-        return photos;
+        return List.copyOf(photos);
     }
 
     public UUID getCategoryId() {
