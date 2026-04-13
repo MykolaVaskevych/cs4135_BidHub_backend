@@ -60,7 +60,7 @@ public class ListingController {
             @RequestHeader("X-User-Id") UUID sellerId,
             @PathVariable UUID listingId,
             @Valid @RequestBody UpdateListingRequest req) {
-        return listingService.updateListing(listingId, req);
+        return listingService.updateListing(sellerId, listingId, req);
     }
 
     @DeleteMapping("/{listingId}")
@@ -70,6 +70,6 @@ public class ListingController {
     @ApiResponse(responseCode = "404", description = "Listing not found")
     public void deactivateListing(
             @RequestHeader("X-User-Id") UUID sellerId, @PathVariable UUID listingId) {
-        listingService.deactivateListing(listingId);
+        listingService.deactivateListing(sellerId, listingId);
     }
 }

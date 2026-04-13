@@ -104,6 +104,10 @@ public class AuctionService {
                         .findById(auctionId)
                         .orElseThrow(() -> new AuctionNotFoundException(auctionId));
 
+        if (!auction.getSellerId().equals(sellerId)) {
+            throw new IllegalStateException("Only the seller can cancel this auction");
+        }
+
         auction.cancel();
         return AuctionResponse.from(auctionRepository.save(auction));
     }
