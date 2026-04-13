@@ -15,10 +15,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 /**
  * ACL client for catalogue-service.
  *
- * <p>BLOCKED: GET /api/catalogue/categories/{id}/active-count not yet implemented by Zihan.
- * Strict fail-closed fallback: returns -1L (unknown count) → deactivation refused.
- *
  * <p>Resilience: CircuitBreaker + TimeLimiter on "catalogue" instance (C4 evidence).
+ * Fail-closed: returns -1L when catalogue-service is unreachable → deactivation refused (INV-2).
  */
 @Component
 public class CatalogueClient {
@@ -40,28 +38,29 @@ public class CatalogueClient {
 
     /**
      * Returns the number of active listings in a category.
-     * Fail-closed: returns -1L when catalogue-service is unreachable.
-     * -1 → CategoryManagementService treats as "unknown, refuse deactivation" (INV-2).
-     *
-     * <p>BLOCKED: endpoint not yet available — this method always hits the fallback.
+     * Catalogue returns {"activeCount": N} — we extract the value.
+     * Fail-closed: returns -1L when catalogue-service is unreachable (INV-2).
      */
     public long countActiveListings(UUID categoryId) {
         try {
-            Long count =
-                    catalogueWebClient
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Long> body =
+                    (java.util.Map<String, Long>) catalogueWebClient
                             .get()
                             .uri("/api/catalogue/categories/{categoryId}/active-count", categoryId)
                             .retrieve()
-                            .bodyToMono(Long.class)
+                            .bodyToMono(java.util.Map.class)
                             .transformDeferred(TimeLimiterOperator.of(timeLimiter))
                             .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                             .block();
-            return count != null ? count : 0L;
+            if (body == null) return 0L;
+            Number count = (Number) body.get("activeCount");
+            return count != null ? count.longValue() : 0L;
         } catch (Exception ex) {
             log.warn(
                     "catalogue-service unavailable for categoryId={}, failing closed (INV-2). cause={}",
                     categoryId, ex.getMessage());
-            return -1L; // unknown — caller must refuse deactivation
+            return -1L;
         }
     }
 }
