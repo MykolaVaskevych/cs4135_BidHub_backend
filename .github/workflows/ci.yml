@@ -110,6 +110,7 @@ jobs:
           - { name: order-service,       dockerfile: order-service/Dockerfile }
           - { name: payment-service,     dockerfile: payment-service/Dockerfile }
           - { name: notification-service, dockerfile: notification-service/Dockerfile }
+          - { name: delivery-service,    dockerfile: delivery-service/Dockerfile }
           - { name: admin-service,       dockerfile: admin-service/Dockerfile }
     steps:
       - uses: actions/checkout@v4
