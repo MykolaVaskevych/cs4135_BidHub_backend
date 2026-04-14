@@ -159,6 +159,31 @@ services:
       eureka-server:
         condition: service_healthy
 
+  delivery-service:
+    build:
+      context: .
+      dockerfile: delivery-service/Dockerfile
+    container_name: bidhub-delivery
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      DB_URL: jdbc:postgresql://postgres:5432/bidhub_delivery
+      DB_USERNAME: bidhub
+      DB_PASSWORD: bidhub_dev_password
+      DB_DRIVER: org.postgresql.Driver
+      JPA_DDL: update
+      JPA_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+
   admin-service:
     build:
       context: .
