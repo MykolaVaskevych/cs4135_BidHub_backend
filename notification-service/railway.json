@@ -2,8 +2,8 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "notification-service/Dockerfile",
-    "buildContext": "."
+    "dockerfilePath": "backend/notification-service/Dockerfile",
+    "buildContext": "backend"
   },
   "deploy": {
     "startCommand": "java -jar app.jar",
