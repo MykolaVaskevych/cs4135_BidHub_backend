@@ -33,7 +33,7 @@ public class DashboardController {
         return dashboardService.getSummary();
     }
 
-    @GetMapping("/api/admin/users/search")
+    @GetMapping("/api/admin/dashboard/user-search")
     @Operation(summary = "Search users", description = "Delegates to account-service. Requires ADMIN role.")
     @ApiResponse(responseCode = "200", description = "Matching users")
     public List<UserSearchResponse> searchUsers(
