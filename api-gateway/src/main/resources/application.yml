@@ -46,6 +46,14 @@ spring:
               uri: lb://catalog-service
               predicates:
                 - Path=/api/catalogue/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+            - id: delivery-service
+              uri: lb://delivery-service
+              predicates:
+                - Path=/api/delivery/**
 
 eureka:
   client:
