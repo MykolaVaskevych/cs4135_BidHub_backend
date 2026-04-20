@@ -94,9 +94,13 @@ public class CategoryManagementService {
                         .findById(categoryId)
                         .orElseThrow(() -> new CategoryNotFoundException(categoryId));
 
-        // INV-2: refuse deactivation if active listings exist in this category.
+        // INV-2: refuse deactivation if active listings exist or catalogue-service is unreachable.
         // CatalogueClient returns -1L when catalogue-service is unreachable (fail-closed).
         long activeCount = catalogueClient.countActiveListings(categoryId);
+        if (activeCount < 0) {
+            throw new IllegalStateException(
+                    "Cannot deactivate category: catalogue-service unreachable (INV-2)");
+        }
         if (activeCount > 0) {
             throw new IllegalStateException(
                     "Cannot deactivate category: it has " + activeCount + " active listing(s) (INV-2)");
