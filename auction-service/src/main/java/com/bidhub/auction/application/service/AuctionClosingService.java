@@ -27,7 +27,6 @@ public class AuctionClosingService {
     }
 
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     public void closeExpiredAuctions() {
         List<Auction> expired = auctionRepository.findExpiredActive(Instant.now());
         if (!expired.isEmpty()) {
@@ -38,6 +37,7 @@ public class AuctionClosingService {
         }
     }
 
+    @Transactional
     public void closeOne(Auction auction) {
         auction.close();
         auctionRepository.save(auction);
