@@ -16,6 +16,8 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
 
     List<Auction> findByStatus(AuctionStatus status);
 
+    long countByStatus(AuctionStatus status);
+
     List<Auction> findBySellerId(UUID sellerId);
 
     /** Returns all ACTIVE auctions whose endTime has passed with bids eagerly loaded. */

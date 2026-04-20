@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AuctionClosingService {
@@ -50,21 +52,29 @@ public class AuctionClosingService {
         auctionRepository.save(auction);
         log.info("Auction {} closed → {}", auction.getAuctionId(), auction.getStatus());
 
-        String auctionIdStr = auction.getAuctionId().toString();
-        notificationClient.sendAsync(
-                auction.getSellerId(),
-                "AUCTION_ENDED_SELLER",
-                Map.of("auctionId", auctionIdStr));
+        final String auctionIdStr = auction.getAuctionId().toString();
+        final UUID sellerId = auction.getSellerId();
+        final boolean sold = auction.getStatus() == AuctionStatus.SOLD;
+        final UUID buyerId = sold ? auction.highestBid().get().getBidderId() : null;
 
-        if (auction.getStatus() == AuctionStatus.SOLD) {
-            UUID buyerId = auction.highestBid().get().getBidderId();
+        if (sold) {
             deliveryClient.createJobAsync(
                     auction.getAuctionId(),
-                    auction.getSellerId(),
+                    sellerId,
                     buyerId,
                     auction.getCurrentPrice().getAmount());
-            notificationClient.sendAsync(
-                    buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
         }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationClient.sendAsync(
+                        sellerId, "AUCTION_ENDED_SELLER", Map.of("auctionId", auctionIdStr));
+                if (sold) {
+                    notificationClient.sendAsync(
+                            buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
+                }
+            }
+        });
     }
 }

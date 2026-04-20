@@ -12,6 +12,7 @@ import com.bidhub.admin.infrastructure.acl.UserSnapshot;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -37,6 +38,7 @@ public class AdminDashboardService {
         this.auctionClient = auctionClient;
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public DashboardSummaryResponse getSummary(UUID adminId) {
         long activeCategories = categoryRepository.findByIsActiveTrue().size();
         long totalCategories = categoryRepository.count();

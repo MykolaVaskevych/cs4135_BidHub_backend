@@ -25,15 +25,15 @@ public class TemplateSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seed(NotificationType.BID_OUTBID, NotificationChannel.IN_APP,
                 "You have been outbid",
-                "Your bid on \"{{title}}\" was outbid. New highest bid: €{{amount}}.");
+                "You have been outbid on auction {{auctionId}}.");
 
         seed(NotificationType.AUCTION_WON, NotificationChannel.IN_APP,
                 "You won the auction!",
-                "Congratulations! You won \"{{title}}\" with a bid of €{{amount}}.");
+                "Congratulations! You won auction {{auctionId}}.");
 
         seed(NotificationType.AUCTION_ENDED_SELLER, NotificationChannel.IN_APP,
                 "Your auction has ended",
-                "Your auction \"{{title}}\" has ended. Status: {{status}}.");
+                "Your auction {{auctionId}} has ended. Check the auction for final status.");
 
         seed(NotificationType.WELCOME, NotificationChannel.IN_APP,
                 "Welcome to BidHub!",
@@ -70,6 +70,10 @@ public class TemplateSeeder implements ApplicationRunner {
         seed(NotificationType.USER_SUSPENDED, NotificationChannel.IN_APP,
                 "Account suspended",
                 "Your account has been suspended. Reason: {{reason}}.");
+
+        seed(NotificationType.ESCROW_RELEASED, NotificationChannel.IN_APP,
+                "Escrow released",
+                "Escrow payment for order {{orderId}} has been released.");
 
         log.info("Notification templates seeded.");
     }
