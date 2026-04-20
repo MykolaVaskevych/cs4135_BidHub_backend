@@ -23,6 +23,8 @@ import com.bidhub.auction.domain.model.Money;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.domain.repository.ListingRepository;
 import com.bidhub.auction.domain.service.BidValidationService;
+import com.bidhub.auction.infrastructure.acl.DeliveryClient;
+import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -41,6 +43,8 @@ class AuctionServiceTest {
     @Mock private AuctionRepository auctionRepository;
     @Mock private ListingRepository listingRepository;
     @Mock private BidValidationService bidValidationService;
+    @Mock private DeliveryClient deliveryClient;
+    @Mock private NotificationClient notificationClient;
     @InjectMocks private AuctionService auctionService;
 
     private static final UUID SELLER_ID = UUID.randomUUID();

@@ -6,8 +6,10 @@ import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOper
 import io.github.resilience4j.reactor.timelimiter.TimeLimiterOperator;
 import io.github.resilience4j.timelimiter.TimeLimiter;
 import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.core.ParameterizedTypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -59,10 +61,33 @@ public class AuctionClient {
         }
     }
 
+    /** Returns count of ACTIVE auctions. Returns -1 on failure. */
+    public long countActiveAuctions() {
+        try {
+            List<AuctionSnapshot> all =
+                    auctionWebClient
+                            .get()
+                            .uri("/api/auctions/all")
+                            .retrieve()
+                            .bodyToMono(new ParameterizedTypeReference<List<AuctionSnapshot>>() {})
+                            .transformDeferred(TimeLimiterOperator.of(timeLimiter))
+                            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                            .block();
+            if (all == null) return 0;
+            return all.stream().filter(a -> "ACTIVE".equals(a.status())).count();
+        } catch (Exception ex) {
+            log.warn("auction-service unavailable for countActiveAuctions, cause={}", ex.getMessage());
+            return -1;
+        }
+    }
+
     /** Value object returned by auction-service listing endpoint. */
     public record ListingSnapshot(
             UUID listingId,
             String title,
             String status,
             UUID sellerId) {}
+
+    /** Minimal view of an auction for count purposes. */
+    public record AuctionSnapshot(UUID auctionId, String status) {}
 }

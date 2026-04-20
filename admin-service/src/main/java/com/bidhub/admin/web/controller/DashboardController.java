@@ -30,7 +30,7 @@ public class DashboardController {
     public DashboardSummaryResponse getSummary(
             @RequestHeader("X-User-Id") UUID adminId,
             @RequestHeader("X-User-Roles") String roles) {
-        return dashboardService.getSummary();
+        return dashboardService.getSummary(adminId);
     }
 
     @GetMapping("/api/admin/dashboard/user-search")

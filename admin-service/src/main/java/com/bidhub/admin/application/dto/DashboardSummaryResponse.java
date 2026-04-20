@@ -6,4 +6,6 @@ public record DashboardSummaryResponse(
         long pendingReports,
         long resolvedReports,
         long dismissedReports,
-        long totalModerationActions) {}
+        long totalModerationActions,
+        long totalUsers,
+        long activeAuctions) {}

@@ -4,8 +4,10 @@ import com.bidhub.auction.domain.model.Auction;
 import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
+import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +22,15 @@ public class AuctionClosingService {
 
     private final AuctionRepository auctionRepository;
     private final DeliveryClient deliveryClient;
+    private final NotificationClient notificationClient;
 
-    public AuctionClosingService(AuctionRepository auctionRepository, DeliveryClient deliveryClient) {
+    public AuctionClosingService(
+            AuctionRepository auctionRepository,
+            DeliveryClient deliveryClient,
+            NotificationClient notificationClient) {
         this.auctionRepository = auctionRepository;
         this.deliveryClient = deliveryClient;
+        this.notificationClient = notificationClient;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -43,6 +50,12 @@ public class AuctionClosingService {
         auctionRepository.save(auction);
         log.info("Auction {} closed → {}", auction.getAuctionId(), auction.getStatus());
 
+        String auctionIdStr = auction.getAuctionId().toString();
+        notificationClient.sendAsync(
+                auction.getSellerId(),
+                "AUCTION_ENDED_SELLER",
+                Map.of("auctionId", auctionIdStr));
+
         if (auction.getStatus() == AuctionStatus.SOLD) {
             UUID buyerId = auction.highestBid().get().getBidderId();
             deliveryClient.createJobAsync(
@@ -50,6 +63,8 @@ public class AuctionClosingService {
                     auction.getSellerId(),
                     buyerId,
                     auction.getCurrentPrice().getAmount());
+            notificationClient.sendAsync(
+                    buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
         }
     }
 }

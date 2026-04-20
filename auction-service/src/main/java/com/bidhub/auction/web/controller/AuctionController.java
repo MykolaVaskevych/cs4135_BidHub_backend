@@ -107,4 +107,27 @@ public class AuctionController {
             @RequestHeader("X-User-Id") UUID sellerId, @PathVariable UUID auctionId) {
         return auctionService.cancelAuction(sellerId, auctionId);
     }
+
+    @PostMapping("/{auctionId}/remove")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove auction (admin)", description = "Marks auction as REMOVED. Admin use only.")
+    @ApiResponse(responseCode = "204", description = "Auction removed")
+    @ApiResponse(responseCode = "404", description = "Auction not found")
+    public void removeAuction(@PathVariable UUID auctionId) {
+        auctionService.removeAuction(auctionId);
+    }
+
+    @GetMapping("/{auctionId}/bids")
+    @Operation(summary = "Get bid history", description = "Returns all bids for an auction, newest first.")
+    @ApiResponse(responseCode = "200", description = "Bid history")
+    public List<BidResponse> getBidHistory(@PathVariable UUID auctionId) {
+        return auctionService.getBidHistory(auctionId);
+    }
+
+    @GetMapping("/my-bids")
+    @Operation(summary = "Get auctions I bid on", description = "Returns all auctions where the authenticated user placed at least one bid.")
+    @ApiResponse(responseCode = "200", description = "Auctions with my bids")
+    public List<AuctionResponse> getMyBids(@RequestHeader("X-User-Id") UUID bidderId) {
+        return auctionService.getMyBids(bidderId);
+    }
 }

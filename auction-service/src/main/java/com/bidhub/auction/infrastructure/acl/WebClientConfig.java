@@ -28,4 +28,12 @@ public class WebClientConfig {
                 .baseUrl(deliveryUrl)
                 .build();
     }
+
+    @Bean
+    public WebClient notificationWebClient(
+            @Value("${notification.service.url:http://notification-service:8086}") String notificationUrl) {
+        return WebClient.builder()
+                .baseUrl(notificationUrl)
+                .build();
+    }
 }

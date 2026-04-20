@@ -7,6 +7,7 @@ import com.bidhub.admin.domain.repository.CategoryRepository;
 import com.bidhub.admin.domain.repository.ModerationActionRepository;
 import com.bidhub.admin.domain.repository.UserReportRepository;
 import com.bidhub.admin.infrastructure.acl.AccountClient;
+import com.bidhub.admin.infrastructure.acl.AuctionClient;
 import com.bidhub.admin.infrastructure.acl.UserSnapshot;
 import java.util.List;
 import java.util.UUID;
@@ -21,32 +22,39 @@ public class AdminDashboardService {
     private final UserReportRepository userReportRepository;
     private final ModerationActionRepository moderationActionRepository;
     private final AccountClient accountClient;
+    private final AuctionClient auctionClient;
 
     public AdminDashboardService(
             CategoryRepository categoryRepository,
             UserReportRepository userReportRepository,
             ModerationActionRepository moderationActionRepository,
-            AccountClient accountClient) {
+            AccountClient accountClient,
+            AuctionClient auctionClient) {
         this.categoryRepository = categoryRepository;
         this.userReportRepository = userReportRepository;
         this.moderationActionRepository = moderationActionRepository;
         this.accountClient = accountClient;
+        this.auctionClient = auctionClient;
     }
 
-    public DashboardSummaryResponse getSummary() {
+    public DashboardSummaryResponse getSummary(UUID adminId) {
         long activeCategories = categoryRepository.findByIsActiveTrue().size();
         long totalCategories = categoryRepository.count();
         long pendingReports = userReportRepository.findByStatus(ReportStatus.PENDING).size();
         long resolvedReports = userReportRepository.findByStatus(ReportStatus.RESOLVED).size();
         long dismissedReports = userReportRepository.findByStatus(ReportStatus.DISMISSED).size();
         long totalModerationActions = moderationActionRepository.count();
+        long totalUsers = accountClient.countUsers(adminId);
+        long activeAuctions = auctionClient.countActiveAuctions();
         return new DashboardSummaryResponse(
                 activeCategories,
                 totalCategories,
                 pendingReports,
                 resolvedReports,
                 dismissedReports,
-                totalModerationActions);
+                totalModerationActions,
+                totalUsers < 0 ? 0 : totalUsers,
+                activeAuctions < 0 ? 0 : activeAuctions);
     }
 
     public List<UserSearchResponse> searchUsers(UUID adminId, String keyword, int page, int size) {
