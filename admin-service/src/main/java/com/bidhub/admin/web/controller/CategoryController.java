@@ -76,11 +76,33 @@ public class CategoryController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Deactivate category", description = "Soft-deletes category (INV-1/2). Requires ADMIN role.")
     @ApiResponse(responseCode = "204", description = "Category deactivated")
-    @ApiResponse(responseCode = "409", description = "Category has active listings (INV-2) — blocked on Zihan's endpoint")
+    @ApiResponse(responseCode = "409", description = "Category has active listings (INV-2)")
     public void deactivateCategory(
             @RequestHeader("X-User-Id") UUID adminId,
             @RequestHeader("X-User-Roles") String roles,
             @PathVariable UUID categoryId) {
         categoryManagementService.deactivateCategory(categoryId);
+    }
+
+    @PutMapping("/{categoryId}/activate")
+    @Operation(summary = "Reactivate category", description = "Re-enables a deactivated category. Requires ADMIN role.")
+    @ApiResponse(responseCode = "200", description = "Category activated")
+    public CategoryResponse activateCategory(
+            @RequestHeader("X-User-Id") UUID adminId,
+            @RequestHeader("X-User-Roles") String roles,
+            @PathVariable UUID categoryId) {
+        return categoryManagementService.activateCategory(categoryId);
+    }
+
+    @DeleteMapping("/{categoryId}/hard")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Hard-delete category", description = "Permanently removes a category. Blocked if it has active listings.")
+    @ApiResponse(responseCode = "204", description = "Category deleted")
+    @ApiResponse(responseCode = "409", description = "Category has active listings")
+    public void hardDeleteCategory(
+            @RequestHeader("X-User-Id") UUID adminId,
+            @RequestHeader("X-User-Roles") String roles,
+            @PathVariable UUID categoryId) {
+        categoryManagementService.deleteCategory(categoryId);
     }
 }

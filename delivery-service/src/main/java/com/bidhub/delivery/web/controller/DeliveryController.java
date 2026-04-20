@@ -47,6 +47,13 @@ public class DeliveryController {
         return service.getMyJobs(userId);
     }
 
+    @GetMapping("/pending")
+    @Operation(summary = "List pending jobs", description = "Returns all PENDING delivery jobs available for drivers to pick up.")
+    @ApiResponse(responseCode = "200", description = "Pending jobs returned")
+    public List<DeliveryJobResponse> pendingJobs() {
+        return service.getPendingJobs();
+    }
+
     @PostMapping("/{jobId}/assign")
     @Operation(summary = "Assign driver", description = "Assigns a driver to a PENDING job. INV-D2.")
     @ApiResponse(responseCode = "200", description = "Driver assigned")

@@ -4,6 +4,7 @@ import com.bidhub.delivery.application.dto.CreateDeliveryJobRequest;
 import com.bidhub.delivery.application.dto.DeliveryJobResponse;
 import com.bidhub.delivery.domain.exception.DeliveryJobNotFoundException;
 import com.bidhub.delivery.domain.model.DeliveryJob;
+import com.bidhub.delivery.domain.model.DeliveryStatus;
 import com.bidhub.delivery.domain.model.EscrowReference;
 import com.bidhub.delivery.domain.repository.DeliveryJobRepository;
 import org.slf4j.Logger;
@@ -105,6 +106,13 @@ public class DeliveryEscrowService {
         return java.util.stream.Stream.of(asBuyer, asSeller, asDriver)
                 .flatMap(List::stream)
                 .distinct()
+                .map(DeliveryJobResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliveryJobResponse> getPendingJobs() {
+        return repo.findByStatus(DeliveryStatus.PENDING).stream()
                 .map(DeliveryJobResponse::from)
                 .toList();
     }

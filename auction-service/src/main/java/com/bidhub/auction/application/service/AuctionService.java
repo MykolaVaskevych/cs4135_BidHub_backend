@@ -15,6 +15,7 @@ import com.bidhub.auction.domain.model.Money;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.domain.repository.ListingRepository;
 import com.bidhub.auction.domain.service.BidValidationService;
+import com.bidhub.auction.infrastructure.acl.DeliveryClient;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -28,14 +29,17 @@ public class AuctionService {
     private final AuctionRepository auctionRepository;
     private final ListingRepository listingRepository;
     private final BidValidationService bidValidationService;
+    private final DeliveryClient deliveryClient;
 
     public AuctionService(
             AuctionRepository auctionRepository,
             ListingRepository listingRepository,
-            BidValidationService bidValidationService) {
+            BidValidationService bidValidationService,
+            DeliveryClient deliveryClient) {
         this.auctionRepository = auctionRepository;
         this.listingRepository = listingRepository;
         this.bidValidationService = bidValidationService;
+        this.deliveryClient = deliveryClient;
     }
 
     public AuctionResponse createAuction(UUID sellerId, CreateAuctionRequest req) {
@@ -95,7 +99,11 @@ public class AuctionService {
                         .orElseThrow(() -> new AuctionNotFoundException(auctionId));
 
         auction.buyNow(buyerId);
-        return AuctionResponse.from(auctionRepository.save(auction));
+        AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
+        deliveryClient.createJobAsync(
+                auctionId, auction.getSellerId(), buyerId,
+                auction.getBuyNowPrice().getAmount());
+        return response;
     }
 
     public AuctionResponse cancelAuction(UUID sellerId, UUID auctionId) {

@@ -19,4 +19,12 @@ public class WebClientConfig {
                 .baseUrl("http://account-service")
                 .build();
     }
+
+    @Bean
+    @LoadBalanced
+    public WebClient deliveryWebClient() {
+        return WebClient.builder()
+                .baseUrl("http://delivery-service")
+                .build();
+    }
 }

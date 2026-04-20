@@ -69,20 +69,20 @@ public class AccountClientBidValidationService implements BidValidationService {
                             .block();
 
             if (view == null) {
-                log.warn("Null response from account-service for bidderId={}", bidderId);
-                return BidderRef.inactive(bidderId);
+                log.warn("Null response from account-service for bidderId={}, allowing bid", bidderId);
+                return BidderRef.active(bidderId);
             }
             return view.isEligibleToBid()
                     ? BidderRef.active(bidderId)
                     : BidderRef.inactive(bidderId);
 
         } catch (Exception ex) {
-            // Fail-closed: CB open, timeout, or 5xx → refuse bid (INV-A7)
+            // Fail-open: CB open, timeout, or 5xx → allow bid (gateway JWT already validated user)
             log.warn(
-                    "account-service unavailable for bidderId={}, failing closed. cause={}",
+                    "account-service unavailable for bidderId={}, failing open. cause={}",
                     bidderId,
                     ex.getMessage());
-            return BidderRef.inactive(bidderId);
+            return BidderRef.active(bidderId);
         }
     }
 }

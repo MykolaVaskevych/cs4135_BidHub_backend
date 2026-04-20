@@ -16,9 +16,11 @@ public record AuctionResponse(
         AuctionStatus status,
         Instant endTime,
         int bidCount,
+        UUID leadingBidderId,
         Instant createdAt) {
 
     public static AuctionResponse from(Auction auction) {
+        UUID leadingBidder = auction.highestBid().map(b -> b.getBidderId()).orElse(null);
         return new AuctionResponse(
                 auction.getAuctionId(),
                 auction.getListingId(),
@@ -30,6 +32,7 @@ public record AuctionResponse(
                 auction.getStatus(),
                 auction.getDuration().getEndTime(),
                 auction.bidCount(),
+                leadingBidder,
                 auction.getCreatedAt());
     }
 }

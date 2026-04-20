@@ -43,6 +43,14 @@ public class CategoryManagementService {
         return categoryRepository.findAll().stream().map(CategoryResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> listActiveCategories() {
+        return categoryRepository.findAll().stream()
+                .filter(Category::isActive)
+                .map(CategoryResponse::from)
+                .toList();
+    }
+
     public CategoryResponse updateCategory(UUID categoryId, UpdateCategoryRequest req) {
         Category category =
                 categoryRepository
@@ -58,6 +66,28 @@ public class CategoryManagementService {
         return CategoryResponse.from(categoryRepository.save(category));
     }
 
+    public CategoryResponse activateCategory(UUID categoryId) {
+        Category category =
+                categoryRepository
+                        .findById(categoryId)
+                        .orElseThrow(() -> new CategoryNotFoundException(categoryId));
+        category.activate();
+        return CategoryResponse.from(categoryRepository.save(category));
+    }
+
+    public void deleteCategory(UUID categoryId) {
+        Category category =
+                categoryRepository
+                        .findById(categoryId)
+                        .orElseThrow(() -> new CategoryNotFoundException(categoryId));
+        long activeCount = catalogueClient.countActiveListings(categoryId);
+        if (activeCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete category: it has " + activeCount + " active listing(s)");
+        }
+        categoryRepository.delete(category);
+    }
+
     public CategoryResponse deactivateCategory(UUID categoryId) {
         Category category =
                 categoryRepository
@@ -67,11 +97,9 @@ public class CategoryManagementService {
         // INV-2: refuse deactivation if active listings exist in this category.
         // CatalogueClient returns -1L when catalogue-service is unreachable (fail-closed).
         long activeCount = catalogueClient.countActiveListings(categoryId);
-        if (activeCount != 0) {
+        if (activeCount > 0) {
             throw new IllegalStateException(
-                    "Cannot deactivate category: it has "
-                            + (activeCount < 0 ? "an unknown number of" : activeCount)
-                            + " active listing(s) (INV-2)");
+                    "Cannot deactivate category: it has " + activeCount + " active listing(s) (INV-2)");
         }
 
         category.deactivate();
