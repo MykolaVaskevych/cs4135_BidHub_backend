@@ -16,9 +16,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Verifies that AccountClientBidValidationService fails closed when account-service
- * is unreachable: validateBidder() must return an inactive BidderRef (not throw),
- * and the circuit breaker transitions through its states correctly.
+ * Verifies that AccountClientBidValidationService fails open when account-service
+ * is unreachable: validateBidder() must return an active BidderRef (not throw),
+ * since the gateway JWT already validated the user.
  */
 @SpringBootTest(webEnvironment = WebEnvironment.NONE)
 class BidValidationServiceResilienceTest {
@@ -35,15 +35,14 @@ class BidValidationServiceResilienceTest {
     }
 
     @Test
-    @DisplayName("Fail-closed: validateBidder returns inactive BidderRef when account-service is down")
-    void validateBidder_accountServiceDown_returnsInactiveBidderRef() {
+    @DisplayName("Fail-open: validateBidder returns active BidderRef when account-service is down")
+    void validateBidder_accountServiceDown_returnsActiveBidderRef() {
         // account-service is NOT running — WebClient call will time out / refuse connection.
-        // The @TimeLimiter + @CircuitBreaker fallback must return BidderRef.inactive().
+        // Fail-open: gateway JWT already validated the user, so allow the bid rather than block it.
         UUID bidderId = UUID.randomUUID();
         BidderRef result = bidValidationService.validateBidder(bidderId);
 
-        // Fail-closed: inactive ref → AuctionService will reject the bid
-        assertThat(result.isActive()).isFalse();
+        assertThat(result.isActive()).isTrue();
         assertThat(result.userId()).isEqualTo(bidderId);
     }
 }
