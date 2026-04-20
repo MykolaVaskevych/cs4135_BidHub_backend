@@ -54,6 +54,7 @@ class AuctionControllerTest {
                 AuctionStatus.ACTIVE,
                 Instant.now().plusSeconds(3600),
                 0,
+                null,
                 Instant.now());
     }
 
@@ -115,6 +116,7 @@ class AuctionControllerTest {
                         AuctionStatus.CANCELLED,
                         Instant.now().plusSeconds(3600),
                         0,
+                        null,
                         Instant.now());
         when(auctionService.cancelAuction(eq(SELLER_ID), eq(AUCTION_ID))).thenReturn(cancelled);
 
