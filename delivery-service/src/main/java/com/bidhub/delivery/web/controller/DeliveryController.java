@@ -105,6 +105,21 @@ public class DeliveryController {
         return service.raiseDispute(jobId, reporterId, req.reason());
     }
 
+    @GetMapping("/disputed")
+    @Operation(summary = "List disputed jobs", description = "Returns all DISPUTED delivery jobs. Admin use.")
+    @ApiResponse(responseCode = "200", description = "Disputed jobs returned")
+    public List<DeliveryJobResponse> disputedJobs() {
+        return service.getDisputedJobs();
+    }
+
+    @PostMapping("/{jobId}/resolve-dispute")
+    @Operation(summary = "Resolve dispute", description = "Admin resolves a disputed job. DISPUTED → CONFIRMED, escrow released.")
+    @ApiResponse(responseCode = "200", description = "Dispute resolved")
+    @ApiResponse(responseCode = "409", description = "Job not in DISPUTED state")
+    public DeliveryJobResponse resolveDispute(@PathVariable UUID jobId) {
+        return service.resolveDispute(jobId);
+    }
+
     @PostMapping("/{jobId}/cancel")
     @Operation(summary = "Cancel job", description = "Cancels a PENDING or ASSIGNED job.")
     @ApiResponse(responseCode = "200", description = "Job cancelled")

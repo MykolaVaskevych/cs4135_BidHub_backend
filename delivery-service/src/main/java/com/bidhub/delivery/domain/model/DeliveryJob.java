@@ -161,6 +161,18 @@ public class DeliveryJob {
     }
 
     /**
+     * Admin resolves a dispute. DISPUTED → CONFIRMED; escrow released.
+     */
+    public void resolveDispute() {
+        if (this.status != DeliveryStatus.DISPUTED) {
+            throw new IllegalDeliveryStateException(
+                    "resolveDispute", this.status, DeliveryStatus.DISPUTED);
+        }
+        this.status = DeliveryStatus.CONFIRMED;
+        this.escrowRef.release();
+    }
+
+    /**
      * Cancel job. Only valid from PENDING or ASSIGNED.
      */
     public void cancel() {

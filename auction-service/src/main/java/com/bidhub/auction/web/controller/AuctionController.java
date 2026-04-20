@@ -62,6 +62,20 @@ public class AuctionController {
         return auctionService.searchAuctions(q, category);
     }
 
+    @GetMapping("/my-sales")
+    @Operation(summary = "Get my auctions", description = "Returns all auctions created by the authenticated seller (all statuses).")
+    @ApiResponse(responseCode = "200", description = "Seller's auctions")
+    public List<AuctionResponse> getMyAuctions(@RequestHeader("X-User-Id") UUID sellerId) {
+        return auctionService.getMyAuctions(sellerId);
+    }
+
+    @GetMapping("/all")
+    @Operation(summary = "All auctions (admin)", description = "Returns every auction regardless of status. Admin use only.")
+    @ApiResponse(responseCode = "200", description = "All auctions")
+    public List<AuctionResponse> getAllAuctions() {
+        return auctionService.getAllAuctions();
+    }
+
     @PostMapping("/{auctionId}/bids")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Place bid", description = "Places a bid on an auction (INV-A1, A7, A8).")

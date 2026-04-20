@@ -1,5 +1,6 @@
 package com.bidhub.auction.infrastructure.acl;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,10 +22,10 @@ public class WebClientConfig {
     }
 
     @Bean
-    @LoadBalanced
-    public WebClient deliveryWebClient() {
+    public WebClient deliveryWebClient(
+            @Value("${delivery.service.url:http://delivery-service:8088}") String deliveryUrl) {
         return WebClient.builder()
-                .baseUrl("http://delivery-service")
+                .baseUrl(deliveryUrl)
                 .build();
     }
 }

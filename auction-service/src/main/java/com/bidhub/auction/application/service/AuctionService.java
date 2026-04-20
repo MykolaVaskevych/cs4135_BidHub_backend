@@ -74,6 +74,20 @@ public class AuctionService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<AuctionResponse> getAllAuctions() {
+        return auctionRepository.findAll().stream()
+                .map(AuctionResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuctionResponse> getMyAuctions(UUID sellerId) {
+        return auctionRepository.findBySellerId(sellerId).stream()
+                .map(AuctionResponse::from)
+                .toList();
+    }
+
     public BidResponse placeBid(UUID bidderId, UUID auctionId, PlaceBidRequest req) {
         Auction auction =
                 auctionRepository

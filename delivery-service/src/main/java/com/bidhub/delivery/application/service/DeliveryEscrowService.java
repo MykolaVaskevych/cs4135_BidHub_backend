@@ -85,6 +85,22 @@ public class DeliveryEscrowService {
         return DeliveryJobResponse.from(job);
     }
 
+    /** Admin resolves a disputed job. DISPUTED → CONFIRMED; escrow released. */
+    public DeliveryJobResponse resolveDispute(UUID jobId) {
+        DeliveryJob job = getJobEntity(jobId);
+        job.resolveDispute();
+        repo.save(job);
+        log.info("[DELIVERY] dispute resolved job={}", jobId);
+        return DeliveryJobResponse.from(job);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliveryJobResponse> getDisputedJobs() {
+        return repo.findByStatus(DeliveryStatus.DISPUTED).stream()
+                .map(DeliveryJobResponse::from)
+                .toList();
+    }
+
     /** Cancel job. Only valid from PENDING or ASSIGNED. */
     public DeliveryJobResponse cancelJob(UUID jobId) {
         DeliveryJob job = getJobEntity(jobId);

@@ -18,10 +18,10 @@ public interface AuctionRepository extends JpaRepository<Auction, UUID> {
 
     List<Auction> findBySellerId(UUID sellerId);
 
-    /** Returns all ACTIVE auctions whose endTime has passed — used by AuctionClosingService. */
+    /** Returns all ACTIVE auctions whose endTime has passed with bids eagerly loaded. */
     @Query(
-            "SELECT a FROM Auction a WHERE a.status = 'ACTIVE'"
-                    + " AND a.duration.endTime < :now")
+            "SELECT DISTINCT a FROM Auction a LEFT JOIN FETCH a.bids"
+                    + " WHERE a.status = 'ACTIVE' AND a.duration.endTime < :now")
     List<Auction> findExpiredActive(@Param("now") Instant now);
 
     /** Returns auctions where the given user has placed a bid. */
