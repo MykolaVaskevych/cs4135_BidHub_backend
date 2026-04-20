@@ -77,7 +77,7 @@ public class AccountClient {
      */
     public List<UserSnapshot> searchUsers(UUID adminId, String keyword, int page, int size) {
         try {
-            List<UserSnapshot> results =
+            UserPage result =
                     accountAdminWebClient
                             .get()
                             .uri(
@@ -90,17 +90,42 @@ public class AccountClient {
                             .header("X-User-Id", adminId.toString())
                             .header("X-User-Roles", "ADMIN")
                             .retrieve()
-                            .bodyToMono(new ParameterizedTypeReference<List<UserSnapshot>>() {})
+                            .bodyToMono(UserPage.class)
                             .transformDeferred(TimeLimiterOperator.of(timeLimiter))
                             .transformDeferred(RetryOperator.of(retry))
                             .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
                             .block();
-            return results != null ? results : List.of();
+            return (result != null && result.content() != null) ? result.content() : List.of();
         } catch (Exception ex) {
             log.warn("account-service unavailable searching users, cause={}", ex.getMessage());
             return List.of();
         }
     }
+
+    /** Returns total user count from account-service. Returns -1 on failure. */
+    public long countUsers(UUID adminId) {
+        try {
+            UserPage result =
+                    accountAdminWebClient
+                            .get()
+                            .uri(u -> u.path("/api/admin/users")
+                                    .queryParam("page", 0).queryParam("size", 1).build())
+                            .header("X-User-Id", adminId.toString())
+                            .header("X-User-Roles", "ADMIN")
+                            .retrieve()
+                            .bodyToMono(UserPage.class)
+                            .transformDeferred(TimeLimiterOperator.of(timeLimiter))
+                            .transformDeferred(RetryOperator.of(retry))
+                            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                            .block();
+            return result != null ? result.totalElements() : 0;
+        } catch (Exception ex) {
+            log.warn("account-service unavailable for countUsers, cause={}", ex.getMessage());
+            return -1;
+        }
+    }
+
+    record UserPage(List<UserSnapshot> content, long totalElements) {}
 
     /** POST /api/admin/users/{userId}/suspend */
     public Optional<UserSnapshot> suspendUser(UUID adminId, UUID userId, String reason) {

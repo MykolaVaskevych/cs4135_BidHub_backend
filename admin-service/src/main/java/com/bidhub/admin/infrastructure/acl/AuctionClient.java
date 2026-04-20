@@ -59,6 +59,25 @@ public class AuctionClient {
         }
     }
 
+    /** Returns count of ACTIVE auctions. Returns -1 on failure. */
+    public long countActiveAuctions() {
+        try {
+            Long count =
+                    auctionWebClient
+                            .get()
+                            .uri("/api/auctions/count?status=ACTIVE")
+                            .retrieve()
+                            .bodyToMono(Long.class)
+                            .transformDeferred(TimeLimiterOperator.of(timeLimiter))
+                            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                            .block();
+            return count != null ? count : 0;
+        } catch (Exception ex) {
+            log.warn("auction-service unavailable for countActiveAuctions, cause={}", ex.getMessage());
+            return -1;
+        }
+    }
+
     /** Value object returned by auction-service listing endpoint. */
     public record ListingSnapshot(
             UUID listingId,

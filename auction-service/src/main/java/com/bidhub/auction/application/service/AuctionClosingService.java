@@ -4,14 +4,18 @@ import com.bidhub.auction.domain.model.Auction;
 import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
+import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AuctionClosingService {
@@ -20,10 +24,15 @@ public class AuctionClosingService {
 
     private final AuctionRepository auctionRepository;
     private final DeliveryClient deliveryClient;
+    private final NotificationClient notificationClient;
 
-    public AuctionClosingService(AuctionRepository auctionRepository, DeliveryClient deliveryClient) {
+    public AuctionClosingService(
+            AuctionRepository auctionRepository,
+            DeliveryClient deliveryClient,
+            NotificationClient notificationClient) {
         this.auctionRepository = auctionRepository;
         this.deliveryClient = deliveryClient;
+        this.notificationClient = notificationClient;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -43,13 +52,29 @@ public class AuctionClosingService {
         auctionRepository.save(auction);
         log.info("Auction {} closed → {}", auction.getAuctionId(), auction.getStatus());
 
-        if (auction.getStatus() == AuctionStatus.SOLD) {
-            UUID buyerId = auction.highestBid().get().getBidderId();
+        final String auctionIdStr = auction.getAuctionId().toString();
+        final UUID sellerId = auction.getSellerId();
+        final boolean sold = auction.getStatus() == AuctionStatus.SOLD;
+        final UUID buyerId = sold ? auction.highestBid().get().getBidderId() : null;
+
+        if (sold) {
             deliveryClient.createJobAsync(
                     auction.getAuctionId(),
-                    auction.getSellerId(),
+                    sellerId,
                     buyerId,
                     auction.getCurrentPrice().getAmount());
         }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationClient.sendAsync(
+                        sellerId, "AUCTION_ENDED_SELLER", Map.of("auctionId", auctionIdStr));
+                if (sold) {
+                    notificationClient.sendAsync(
+                            buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
+                }
+            }
+        });
     }
 }

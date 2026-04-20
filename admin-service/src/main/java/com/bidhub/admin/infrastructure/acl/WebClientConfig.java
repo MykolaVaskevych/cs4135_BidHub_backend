@@ -1,6 +1,6 @@
 package com.bidhub.admin.infrastructure.acl;
 
-import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -8,30 +8,21 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
-    /** Load-balanced WebClient resolving "account-service" via Eureka. */
     @Bean
-    @LoadBalanced
-    public WebClient accountAdminWebClient() {
-        return WebClient.builder()
-                .baseUrl("http://account-service")
-                .build();
+    public WebClient accountAdminWebClient(
+            @Value("${account.service.url:http://account-service:8081}") String accountUrl) {
+        return WebClient.builder().baseUrl(accountUrl).build();
     }
 
-    /** Load-balanced WebClient resolving "catalogue-service" via Eureka. */
     @Bean
-    @LoadBalanced
-    public WebClient catalogueWebClient() {
-        return WebClient.builder()
-                .baseUrl("http://catalog-service")
-                .build();
+    public WebClient catalogueWebClient(
+            @Value("${catalogue.service.url:http://catalog-service:8082}") String catalogueUrl) {
+        return WebClient.builder().baseUrl(catalogueUrl).build();
     }
 
-    /** Load-balanced WebClient resolving "auction-service" via Eureka. */
     @Bean
-    @LoadBalanced
-    public WebClient auctionWebClient() {
-        return WebClient.builder()
-                .baseUrl("http://auction-service")
-                .build();
+    public WebClient auctionWebClient(
+            @Value("${auction.service.url:http://auction-service:8083}") String auctionUrl) {
+        return WebClient.builder().baseUrl(auctionUrl).build();
     }
 }

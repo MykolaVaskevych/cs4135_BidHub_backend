@@ -9,37 +9,49 @@ import com.bidhub.auction.domain.exception.IllegalAuctionStateException;
 import com.bidhub.auction.domain.exception.ListingNotFoundException;
 import com.bidhub.auction.domain.model.Auction;
 import com.bidhub.auction.domain.model.AuctionDuration;
+import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.model.Bid;
 import com.bidhub.auction.domain.model.BidderRef;
 import com.bidhub.auction.domain.model.Money;
 import com.bidhub.auction.domain.repository.AuctionRepository;
+import com.bidhub.auction.domain.repository.BidRepository;
 import com.bidhub.auction.domain.repository.ListingRepository;
 import com.bidhub.auction.domain.service.BidValidationService;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
+import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @Transactional
 public class AuctionService {
 
     private final AuctionRepository auctionRepository;
+    private final BidRepository bidRepository;
     private final ListingRepository listingRepository;
     private final BidValidationService bidValidationService;
     private final DeliveryClient deliveryClient;
+    private final NotificationClient notificationClient;
 
     public AuctionService(
             AuctionRepository auctionRepository,
+            BidRepository bidRepository,
             ListingRepository listingRepository,
             BidValidationService bidValidationService,
-            DeliveryClient deliveryClient) {
+            DeliveryClient deliveryClient,
+            NotificationClient notificationClient) {
         this.auctionRepository = auctionRepository;
+        this.bidRepository = bidRepository;
         this.listingRepository = listingRepository;
         this.bidValidationService = bidValidationService;
         this.deliveryClient = deliveryClient;
+        this.notificationClient = notificationClient;
     }
 
     public AuctionResponse createAuction(UUID sellerId, CreateAuctionRequest req) {
@@ -101,8 +113,20 @@ public class AuctionService {
                     "Bidder account is not eligible to place bids (INV-A7)");
         }
 
+        UUID previousLeaderId = auction.highestBid().map(Bid::getBidderId).orElse(null);
         Bid bid = auction.placeBid(bidderId, Money.of(req.amount()));
         auctionRepository.save(auction);
+
+        if (previousLeaderId != null && !previousLeaderId.equals(bidderId)) {
+            final UUID outbidId = previousLeaderId;
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationClient.sendAsync(
+                            outbidId, "BID_OUTBID", Map.of("auctionId", auctionId.toString()));
+                }
+            });
+        }
         return BidResponse.from(bid);
     }
 
@@ -112,11 +136,22 @@ public class AuctionService {
                         .findById(auctionId)
                         .orElseThrow(() -> new AuctionNotFoundException(auctionId));
 
+        UUID sellerId = auction.getSellerId();
         auction.buyNow(buyerId);
         AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
         deliveryClient.createJobAsync(
-                auctionId, auction.getSellerId(), buyerId,
+                auctionId, sellerId, buyerId,
                 auction.getBuyNowPrice().getAmount());
+        final String auctionIdStr = auctionId.toString();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationClient.sendAsync(
+                        sellerId, "AUCTION_ENDED_SELLER", Map.of("auctionId", auctionIdStr));
+                notificationClient.sendAsync(
+                        buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
+            }
+        });
         return response;
     }
 
@@ -132,5 +167,33 @@ public class AuctionService {
 
         auction.cancel();
         return AuctionResponse.from(auctionRepository.save(auction));
+    }
+
+    public void removeAuction(UUID auctionId) {
+        Auction auction =
+                auctionRepository
+                        .findById(auctionId)
+                        .orElseThrow(() -> new AuctionNotFoundException(auctionId));
+        auction.markRemoved();
+        auctionRepository.save(auction);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BidResponse> getBidHistory(UUID auctionId) {
+        if (!auctionRepository.existsById(auctionId)) throw new AuctionNotFoundException(auctionId);
+        return bidRepository.findByAuction_AuctionIdOrderByPlacedAtDesc(auctionId)
+                .stream().map(BidResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countByStatus(AuctionStatus status) {
+        return auctionRepository.countByStatus(status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuctionResponse> getMyBids(UUID bidderId) {
+        return auctionRepository.findByBidderId(bidderId).stream()
+                .map(AuctionResponse::from)
+                .toList();
     }
 }

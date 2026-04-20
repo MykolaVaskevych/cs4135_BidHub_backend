@@ -5,6 +5,7 @@ import com.bidhub.auction.application.dto.BidResponse;
 import com.bidhub.auction.application.dto.CreateAuctionRequest;
 import com.bidhub.auction.application.dto.PlaceBidRequest;
 import com.bidhub.auction.application.service.AuctionService;
+import com.bidhub.auction.domain.model.AuctionStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auctions")
@@ -76,6 +78,13 @@ public class AuctionController {
         return auctionService.getAllAuctions();
     }
 
+    @GetMapping("/count")
+    @Operation(summary = "Count auctions by status (admin)")
+    @ApiResponse(responseCode = "200", description = "Count")
+    public long countAuctions(@RequestParam AuctionStatus status) {
+        return auctionService.countByStatus(status);
+    }
+
     @PostMapping("/{auctionId}/bids")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Place bid", description = "Places a bid on an auction (INV-A1, A7, A8).")
@@ -106,5 +115,34 @@ public class AuctionController {
     public AuctionResponse cancelAuction(
             @RequestHeader("X-User-Id") UUID sellerId, @PathVariable UUID auctionId) {
         return auctionService.cancelAuction(sellerId, auctionId);
+    }
+
+    @PostMapping("/{auctionId}/remove")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Remove auction (admin)", description = "Marks auction as REMOVED. Admin use only.")
+    @ApiResponse(responseCode = "204", description = "Auction removed")
+    @ApiResponse(responseCode = "403", description = "Caller is not ADMIN")
+    @ApiResponse(responseCode = "404", description = "Auction not found")
+    public void removeAuction(
+            @PathVariable UUID auctionId,
+            @RequestHeader("X-User-Roles") String roles) {
+        if (!roles.contains("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin role required");
+        }
+        auctionService.removeAuction(auctionId);
+    }
+
+    @GetMapping("/{auctionId}/bids")
+    @Operation(summary = "Get bid history", description = "Returns all bids for an auction, newest first.")
+    @ApiResponse(responseCode = "200", description = "Bid history")
+    public List<BidResponse> getBidHistory(@PathVariable UUID auctionId) {
+        return auctionService.getBidHistory(auctionId);
+    }
+
+    @GetMapping("/my-bids")
+    @Operation(summary = "Get auctions I bid on", description = "Returns all auctions where the authenticated user placed at least one bid.")
+    @ApiResponse(responseCode = "200", description = "Auctions with my bids")
+    public List<AuctionResponse> getMyBids(@RequestHeader("X-User-Id") UUID bidderId) {
+        return auctionService.getMyBids(bidderId);
     }
 }
