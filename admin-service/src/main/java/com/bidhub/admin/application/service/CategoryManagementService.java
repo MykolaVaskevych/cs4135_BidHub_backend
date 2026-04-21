@@ -58,7 +58,7 @@ public class CategoryManagementService {
                         .orElseThrow(() -> new CategoryNotFoundException(categoryId));
         category.rename(req.name());
         if (req.description() != null) {
-            // description update handled as part of a rename + description change
+            category.updateDescription(req.description());
         }
         if (req.parentId() != null) {
             category.assignParent(req.parentId());

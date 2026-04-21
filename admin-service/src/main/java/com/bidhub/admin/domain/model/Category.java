@@ -77,6 +77,11 @@ public class Category {
         this.updatedAt = Instant.now();
     }
 
+    public void updateDescription(String description) {
+        this.description = description;
+        this.updatedAt = Instant.now();
+    }
+
     public void assignParent(UUID parentId) {
         this.parentId = parentId;
         this.updatedAt = Instant.now();
