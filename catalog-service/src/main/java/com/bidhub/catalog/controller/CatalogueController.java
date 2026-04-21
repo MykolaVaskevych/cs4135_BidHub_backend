@@ -3,6 +3,7 @@ package com.bidhub.catalog.controller;
 import com.bidhub.catalog.domain.Category;
 import com.bidhub.catalog.domain.IndexedListing;
 import com.bidhub.catalog.repository.CategoryRepository;
+import com.bidhub.catalog.repository.IndexedListingRepository;
 import com.bidhub.catalog.service.SearchService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,11 +21,14 @@ public class CatalogueController {
 
     private final SearchService searchService;
     private final CategoryRepository categoryRepository;
+    private final IndexedListingRepository listingRepository;
 
     public CatalogueController(SearchService searchService,
-            CategoryRepository categoryRepository) {
+            CategoryRepository categoryRepository,
+            IndexedListingRepository listingRepository) {
         this.searchService = searchService;
         this.categoryRepository = categoryRepository;
+        this.listingRepository = listingRepository;
     }
 
     @GetMapping("/search")
@@ -46,5 +50,15 @@ public class CatalogueController {
     public ResponseEntity<Map<String, Long>> getActiveCount(@PathVariable UUID id) {
         long count = searchService.countActiveInCategory(id);
         return ResponseEntity.ok(Map.of("activeCount", count));
+    }
+
+    @PostMapping("/listings")
+    public ResponseEntity<IndexedListing> addListing(@RequestBody IndexedListing listing) {
+        return ResponseEntity.ok(listingRepository.save(listing));
+    }
+
+    @PostMapping("/categories")
+    public ResponseEntity<Category> addCategory(@RequestBody Category category) {
+        return ResponseEntity.ok(categoryRepository.save(category));
     }
 }
