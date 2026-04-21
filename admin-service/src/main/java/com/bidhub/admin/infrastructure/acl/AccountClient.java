@@ -28,6 +28,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class AccountClient {
 
     private static final Logger log = LoggerFactory.getLogger(AccountClient.class);
+    private static final String CB_INSTANCE = "account";
+    private static final String HEADER_USER_ID = "X-User-Id";
+    private static final String HEADER_ROLES = "X-User-Roles";
+    private static final String ROLE_ADMIN = "ADMIN";
 
     private final WebClient accountAdminWebClient;
     private final CircuitBreaker circuitBreaker;
@@ -40,9 +44,9 @@ public class AccountClient {
             RetryRegistry retryRegistry,
             TimeLimiterRegistry timeLimiterRegistry) {
         this.accountAdminWebClient = accountAdminWebClient;
-        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("account");
-        this.retry = retryRegistry.retry("account");
-        this.timeLimiter = timeLimiterRegistry.timeLimiter("account");
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(CB_INSTANCE);
+        this.retry = retryRegistry.retry(CB_INSTANCE);
+        this.timeLimiter = timeLimiterRegistry.timeLimiter(CB_INSTANCE);
     }
 
     /**
@@ -55,8 +59,8 @@ public class AccountClient {
                     accountAdminWebClient
                             .get()
                             .uri("/api/admin/users/{userId}", userId)
-                            .header("X-User-Id", adminId.toString())
-                            .header("X-User-Roles", "ADMIN")
+                            .header(HEADER_USER_ID, adminId.toString())
+                            .header(HEADER_ROLES, ROLE_ADMIN)
                             .retrieve()
                             .bodyToMono(UserSnapshot.class)
                             .transformDeferred(TimeLimiterOperator.of(timeLimiter))
@@ -86,8 +90,8 @@ public class AccountClient {
                                                     .queryParam("page", page)
                                                     .queryParam("size", size)
                                                     .build())
-                            .header("X-User-Id", adminId.toString())
-                            .header("X-User-Roles", "ADMIN")
+                            .header(HEADER_USER_ID, adminId.toString())
+                            .header(HEADER_ROLES, ROLE_ADMIN)
                             .retrieve()
                             .bodyToMono(UserPage.class)
                             .transformDeferred(TimeLimiterOperator.of(timeLimiter))
@@ -109,8 +113,8 @@ public class AccountClient {
                             .get()
                             .uri(u -> u.path("/api/admin/users")
                                     .queryParam("page", 0).queryParam("size", 1).build())
-                            .header("X-User-Id", adminId.toString())
-                            .header("X-User-Roles", "ADMIN")
+                            .header(HEADER_USER_ID, adminId.toString())
+                            .header(HEADER_ROLES, ROLE_ADMIN)
                             .retrieve()
                             .bodyToMono(UserPage.class)
                             .transformDeferred(TimeLimiterOperator.of(timeLimiter))
@@ -148,8 +152,8 @@ public class AccountClient {
                     accountAdminWebClient
                             .post()
                             .uri("/api/admin/users/{userId}/{action}", userId, action)
-                            .header("X-User-Id", adminId.toString())
-                            .header("X-User-Roles", "ADMIN");
+                            .header(HEADER_USER_ID, adminId.toString())
+                            .header(HEADER_ROLES, ROLE_ADMIN);
 
             var bodySpec =
                     reason != null
