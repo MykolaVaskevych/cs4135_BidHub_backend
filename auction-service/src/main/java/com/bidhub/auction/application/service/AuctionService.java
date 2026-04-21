@@ -12,11 +12,13 @@ import com.bidhub.auction.domain.model.AuctionDuration;
 import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.model.Bid;
 import com.bidhub.auction.domain.model.BidderRef;
+import com.bidhub.auction.domain.model.Listing;
 import com.bidhub.auction.domain.model.Money;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.domain.repository.BidRepository;
 import com.bidhub.auction.domain.repository.ListingRepository;
 import com.bidhub.auction.domain.service.BidValidationService;
+import com.bidhub.auction.infrastructure.acl.CatalogueClient;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
 import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
@@ -38,6 +40,7 @@ public class AuctionService {
     private final BidValidationService bidValidationService;
     private final DeliveryClient deliveryClient;
     private final NotificationClient notificationClient;
+    private final CatalogueClient catalogueClient;
 
     public AuctionService(
             AuctionRepository auctionRepository,
@@ -45,17 +48,19 @@ public class AuctionService {
             ListingRepository listingRepository,
             BidValidationService bidValidationService,
             DeliveryClient deliveryClient,
-            NotificationClient notificationClient) {
+            NotificationClient notificationClient,
+            CatalogueClient catalogueClient) {
         this.auctionRepository = auctionRepository;
         this.bidRepository = bidRepository;
         this.listingRepository = listingRepository;
         this.bidValidationService = bidValidationService;
         this.deliveryClient = deliveryClient;
         this.notificationClient = notificationClient;
+        this.catalogueClient = catalogueClient;
     }
 
     public AuctionResponse createAuction(UUID sellerId, CreateAuctionRequest req) {
-        listingRepository
+        Listing listing = listingRepository
                 .findById(req.listingId())
                 .orElseThrow(() -> new ListingNotFoundException(req.listingId()));
 
@@ -68,7 +73,11 @@ public class AuctionService {
                         req.buyNowPrice() != null ? Money.of(req.buyNowPrice()) : null,
                         AuctionDuration.of(Instant.now(), req.endTime()));
 
-        return AuctionResponse.from(auctionRepository.save(auction));
+        AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
+        catalogueClient.indexListingAsync(
+                listing.getListingId(), listing.getTitle(), listing.getCategoryId(),
+                sellerId, req.startingPrice(), req.endTime());
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -116,6 +125,7 @@ public class AuctionService {
         UUID previousLeaderId = auction.highestBid().map(Bid::getBidderId).orElse(null);
         Bid bid = auction.placeBid(bidderId, Money.of(req.amount()));
         auctionRepository.save(auction);
+        catalogueClient.updatePriceAsync(auction.getListingId(), bid.getAmount().getAmount());
 
         if (previousLeaderId != null && !previousLeaderId.equals(bidderId)) {
             final UUID outbidId = previousLeaderId;
@@ -139,6 +149,7 @@ public class AuctionService {
         UUID sellerId = auction.getSellerId();
         auction.buyNow(buyerId);
         AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
+        catalogueClient.updateStatusAsync(auction.getListingId(), "SOLD");
         deliveryClient.createJobAsync(
                 auctionId, sellerId, buyerId,
                 auction.getBuyNowPrice().getAmount());
@@ -166,7 +177,9 @@ public class AuctionService {
         }
 
         auction.cancel();
-        return AuctionResponse.from(auctionRepository.save(auction));
+        AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
+        catalogueClient.updateStatusAsync(auction.getListingId(), "CANCELLED");
+        return response;
     }
 
     public void removeAuction(UUID auctionId) {
@@ -176,6 +189,7 @@ public class AuctionService {
                         .orElseThrow(() -> new AuctionNotFoundException(auctionId));
         auction.markRemoved();
         auctionRepository.save(auction);
+        catalogueClient.updateStatusAsync(auction.getListingId(), "REMOVED");
     }
 
     @Transactional(readOnly = true)

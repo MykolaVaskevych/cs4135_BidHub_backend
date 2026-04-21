@@ -36,4 +36,12 @@ public class WebClientConfig {
                 .baseUrl(notificationUrl)
                 .build();
     }
+
+    @Bean
+    public WebClient catalogueWebClient(
+            @Value("${catalogue.service.url:http://catalog-service:8082}") String catalogueUrl) {
+        return WebClient.builder()
+                .baseUrl(catalogueUrl)
+                .build();
+    }
 }

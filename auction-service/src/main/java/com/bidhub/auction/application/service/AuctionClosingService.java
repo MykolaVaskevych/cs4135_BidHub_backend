@@ -3,6 +3,7 @@ package com.bidhub.auction.application.service;
 import com.bidhub.auction.domain.model.Auction;
 import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.repository.AuctionRepository;
+import com.bidhub.auction.infrastructure.acl.CatalogueClient;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
 import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
@@ -25,14 +26,17 @@ public class AuctionClosingService {
     private final AuctionRepository auctionRepository;
     private final DeliveryClient deliveryClient;
     private final NotificationClient notificationClient;
+    private final CatalogueClient catalogueClient;
 
     public AuctionClosingService(
             AuctionRepository auctionRepository,
             DeliveryClient deliveryClient,
-            NotificationClient notificationClient) {
+            NotificationClient notificationClient,
+            CatalogueClient catalogueClient) {
         this.auctionRepository = auctionRepository;
         this.deliveryClient = deliveryClient;
         this.notificationClient = notificationClient;
+        this.catalogueClient = catalogueClient;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -51,6 +55,7 @@ public class AuctionClosingService {
         auction.close();
         auctionRepository.save(auction);
         log.info("Auction {} closed → {}", auction.getAuctionId(), auction.getStatus());
+        catalogueClient.updateStatusAsync(auction.getListingId(), auction.getStatus().name());
 
         final String auctionIdStr = auction.getAuctionId().toString();
         final UUID sellerId = auction.getSellerId();
