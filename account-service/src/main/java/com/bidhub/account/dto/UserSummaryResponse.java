@@ -13,7 +13,11 @@ public record UserSummaryResponse(
         String lastName,
         UserRole role,
         AccountStatus status,
-        LocalDateTime createdAt) {
+        LocalDateTime createdAt,
+        LocalDateTime suspendedAt,
+        String suspensionReason,
+        LocalDateTime bannedAt,
+        String banReason) {
 
     public static UserSummaryResponse fromEntity(User user) {
         return new UserSummaryResponse(
@@ -23,6 +27,10 @@ public record UserSummaryResponse(
                 user.getLastName(),
                 user.getRole(),
                 user.getStatus(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.getSuspendedAt(),
+                user.getSuspensionReason(),
+                user.getBannedAt(),
+                user.getBanReason());
     }
 }

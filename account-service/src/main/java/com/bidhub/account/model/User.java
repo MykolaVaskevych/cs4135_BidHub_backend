@@ -1,6 +1,7 @@
 package com.bidhub.account.model;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +44,21 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column private LocalDateTime suspendedAt;
+    @Column(length = 500) private String suspensionReason;
+    @Column private UUID suspendedBy;
+
+    @Column private LocalDateTime bannedAt;
+    @Column(length = 500) private String banReason;
+    @Column private UUID bannedBy;
+
+    /**
+     * Any JWT with {@code iat} strictly before this instant must be rejected. Set to now() on
+     * suspend/ban so revocation is immediate; intentionally not cleared on reactivate — the user
+     * must log in again to get a fresh token.
+     */
+    @Column private Instant tokensInvalidAfter;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ShippingAddress> addresses = new ArrayList<>();
 
@@ -57,6 +73,10 @@ public class User {
                     "Can only suspend an ACTIVE user, current status: " + this.status);
         }
         this.status = AccountStatus.SUSPENDED;
+        this.suspendedAt = LocalDateTime.now();
+        this.suspensionReason = reason;
+        this.suspendedBy = adminId;
+        this.tokensInvalidAfter = Instant.now();
     }
 
     public void ban(UUID adminId, String reason) {
@@ -65,6 +85,10 @@ public class User {
                     "Can only ban an ACTIVE or SUSPENDED user, current status: " + this.status);
         }
         this.status = AccountStatus.BANNED;
+        this.bannedAt = LocalDateTime.now();
+        this.banReason = reason;
+        this.bannedBy = adminId;
+        this.tokensInvalidAfter = Instant.now();
     }
 
     public void reactivate(UUID adminId) {
@@ -72,6 +96,8 @@ public class User {
             throw new IllegalStateException("Only suspended users can be reactivated");
         }
         this.status = AccountStatus.ACTIVE;
+        // tokensInvalidAfter intentionally NOT cleared — the suspended user's old JWT must stay
+        // dead even after reactivation; they have to log in again to get a fresh one.
     }
 
     public void addAddress(ShippingAddress address) {

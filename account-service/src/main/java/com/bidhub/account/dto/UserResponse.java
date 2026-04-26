@@ -15,6 +15,12 @@ public record UserResponse(
         UserRole role,
         AccountStatus status,
         LocalDateTime createdAt,
+        LocalDateTime suspendedAt,
+        String suspensionReason,
+        UUID suspendedBy,
+        LocalDateTime bannedAt,
+        String banReason,
+        UUID bannedBy,
         List<AddressResponse> addresses) {
 
     public static UserResponse fromEntity(User user) {
@@ -28,6 +34,12 @@ public record UserResponse(
                 user.getRole(),
                 user.getStatus(),
                 user.getCreatedAt(),
+                user.getSuspendedAt(),
+                user.getSuspensionReason(),
+                user.getSuspendedBy(),
+                user.getBannedAt(),
+                user.getBanReason(),
+                user.getBannedBy(),
                 addresses);
     }
 }

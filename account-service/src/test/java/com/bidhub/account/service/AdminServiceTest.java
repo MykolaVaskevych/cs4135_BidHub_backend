@@ -85,6 +85,22 @@ class AdminServiceTest {
     }
 
     @Test
+    @DisplayName("suspendUser persists audit trail (reason, admin id, timestamp)")
+    void suspendUser_persistsAuditTrail() {
+        User target = sampleUser(TARGET_ID);
+        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+
+        adminService.suspendUser(ADMIN_ID, TARGET_ID, new AdminActionRequest("violation X"));
+
+        assertThat(target.getSuspensionReason()).isEqualTo("violation X");
+        assertThat(target.getSuspendedBy()).isEqualTo(ADMIN_ID);
+        assertThat(target.getSuspendedAt()).isNotNull();
+        assertThat(target.getTokensInvalidAfter())
+                .as("suspend must invalidate outstanding JWTs")
+                .isNotNull();
+    }
+
+    @Test
     @DisplayName("suspendUser on self throws SelfActionNotAllowedException")
     void suspendUser_self_throws() {
         assertThatThrownBy(() -> adminService.suspendUser(ADMIN_ID, ADMIN_ID,
@@ -100,6 +116,22 @@ class AdminServiceTest {
 
         adminService.banUser(ADMIN_ID, TARGET_ID, new AdminActionRequest("reason"));
         assertThat(target.getStatus()).isEqualTo(AccountStatus.BANNED);
+    }
+
+    @Test
+    @DisplayName("banUser persists audit trail (reason, admin id, timestamp)")
+    void banUser_persistsAuditTrail() {
+        User target = sampleUser(TARGET_ID);
+        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+
+        adminService.banUser(ADMIN_ID, TARGET_ID, new AdminActionRequest("fraud"));
+
+        assertThat(target.getBanReason()).isEqualTo("fraud");
+        assertThat(target.getBannedBy()).isEqualTo(ADMIN_ID);
+        assertThat(target.getBannedAt()).isNotNull();
+        assertThat(target.getTokensInvalidAfter())
+                .as("ban must invalidate outstanding JWTs")
+                .isNotNull();
     }
 
     @Test
@@ -119,6 +151,21 @@ class AdminServiceTest {
 
         adminService.reactivateUser(ADMIN_ID, TARGET_ID);
         assertThat(target.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("reactivate does NOT clear tokensInvalidAfter — old JWTs stay dead")
+    void reactivateUser_keepsTokenCutoff() {
+        User target = sampleUser(TARGET_ID);
+        target.suspend(ADMIN_ID, "temp");
+        java.time.Instant cutoffDuringSuspension = target.getTokensInvalidAfter();
+        when(userRepository.findById(TARGET_ID)).thenReturn(Optional.of(target));
+
+        adminService.reactivateUser(ADMIN_ID, TARGET_ID);
+
+        assertThat(target.getTokensInvalidAfter())
+                .as("reactivation must NOT un-revoke tokens issued before the suspension")
+                .isEqualTo(cutoffDuringSuspension);
     }
 
     @Test
