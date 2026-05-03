@@ -1,8 +1,9 @@
 package com.bidhub.auction.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bidhub.auction.domain.model.BidderRef;
+import com.bidhub.auction.domain.exception.BidderValidationUnavailableException;
 import com.bidhub.auction.infrastructure.acl.AccountClientBidValidationService;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -12,13 +13,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.reactive.function.client.WebClient;
 
 /**
- * Verifies that AccountClientBidValidationService fails open when account-service
- * is unreachable: validateBidder() must return an active BidderRef (not throw),
- * since the gateway JWT already validated the user.
+ * Verifies that AccountClientBidValidationService fails closed when account-service is
+ * unreachable: validateBidder() must propagate {@link BidderValidationUnavailableException}
+ * so the bid is rejected (HTTP 503) and no row is persisted, rather than silently allowing
+ * the bid through.
  */
 @SpringBootTest(webEnvironment = WebEnvironment.NONE)
 class BidValidationServiceResilienceTest {
@@ -35,14 +35,11 @@ class BidValidationServiceResilienceTest {
     }
 
     @Test
-    @DisplayName("Fail-open: validateBidder returns active BidderRef when account-service is down")
-    void validateBidder_accountServiceDown_returnsActiveBidderRef() {
-        // account-service is NOT running — WebClient call will time out / refuse connection.
-        // Fail-open: gateway JWT already validated the user, so allow the bid rather than block it.
+    @DisplayName("Fail-closed: validateBidder throws when account-service is unreachable")
+    void validateBidder_accountServiceDown_throwsUnavailable() {
         UUID bidderId = UUID.randomUUID();
-        BidderRef result = bidValidationService.validateBidder(bidderId);
 
-        assertThat(result.isActive()).isTrue();
-        assertThat(result.userId()).isEqualTo(bidderId);
+        assertThatThrownBy(() -> bidValidationService.validateBidder(bidderId))
+                .isInstanceOf(BidderValidationUnavailableException.class);
     }
 }
