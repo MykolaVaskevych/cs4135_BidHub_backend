@@ -2,6 +2,7 @@ package com.bidhub.auction.web.advice;
 
 import com.bidhub.auction.domain.exception.AuctionNotFoundException;
 import com.bidhub.auction.domain.exception.BidTooLowException;
+import com.bidhub.auction.domain.exception.BidderValidationUnavailableException;
 import com.bidhub.auction.domain.exception.IllegalAuctionStateException;
 import com.bidhub.auction.domain.exception.ListingNotFoundException;
 import com.bidhub.auction.domain.exception.SellerBidException;
@@ -43,6 +44,16 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNotFound(RuntimeException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
         pd.setTitle("Not Found");
+        return pd;
+    }
+
+    @ExceptionHandler(BidderValidationUnavailableException.class)
+    public ProblemDetail handleBidderValidationUnavailable(BidderValidationUnavailableException ex) {
+        ProblemDetail pd =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        pd.setTitle("Bidder Validation Unavailable");
+        pd.setProperty("retryable", true);
         return pd;
     }
 

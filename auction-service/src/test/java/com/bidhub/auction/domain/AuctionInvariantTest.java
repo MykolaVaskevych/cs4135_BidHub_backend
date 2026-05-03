@@ -46,19 +46,12 @@ class AuctionInvariantTest {
     }
 
     // ---------------------------------------------------------------
-    // INV-A1: bid.amount must be strictly greater than currentPrice
+    // INV-A1 (B7): first bid ≥ startingPrice; subsequent bids ≥ currentPrice + €1
+    // (Edge cases for the increment rule itself live in AuctionBidIncrementTest.)
     // ---------------------------------------------------------------
 
     @Test
-    @DisplayName("INV-A1: bid equal to currentPrice is rejected")
-    void invA1_bidEqualToCurrentPrice_rejected() {
-        Auction auction = activeAuction(); // currentPrice = startingPrice = 10
-        assertThatThrownBy(() -> auction.placeBid(BUYER_1, Money.of(BigDecimal.valueOf(10))))
-                .isInstanceOf(BidTooLowException.class);
-    }
-
-    @Test
-    @DisplayName("INV-A1: bid below currentPrice is rejected")
+    @DisplayName("INV-A1: bid below startingPrice on a fresh auction is rejected")
     void invA1_bidBelowCurrentPrice_rejected() {
         Auction auction = activeAuction();
         assertThatThrownBy(() -> auction.placeBid(BUYER_1, Money.of(BigDecimal.valueOf(5))))
@@ -66,7 +59,7 @@ class AuctionInvariantTest {
     }
 
     @Test
-    @DisplayName("INV-A1: bid strictly above currentPrice is accepted")
+    @DisplayName("INV-A1: first bid above startingPrice is accepted")
     void invA1_bidAboveCurrentPrice_accepted() {
         Auction auction = activeAuction();
         Bid bid = auction.placeBid(BUYER_1, Money.of(BigDecimal.valueOf(11)));

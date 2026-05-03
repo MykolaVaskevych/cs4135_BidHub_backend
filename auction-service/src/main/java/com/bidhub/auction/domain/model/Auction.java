@@ -15,6 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +27,7 @@ import java.util.UUID;
 /**
  * Auction aggregate root. Encapsulates bidding mechanics for a single listing.
  *
- * <p>INV-A1: bid.amount > currentPrice<br>
+ * <p>INV-A1: first bid ≥ startingPrice; subsequent bids ≥ currentPrice + €1 (B7)<br>
  * INV-A2: bids only when ACTIVE<br>
  * INV-A3: buy-now only when ACTIVE, price set, buyer ≠ seller<br>
  * INV-A4: cancel only when ACTIVE and bidCount = 0<br>
@@ -38,6 +39,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "auctions")
 public class Auction {
+
+    private static final Money MIN_BID_INCREMENT = Money.of(BigDecimal.ONE);
 
     @Id
     @Column(name = "auction_id", nullable = false, updatable = false)
@@ -150,10 +153,12 @@ public class Auction {
         if (bidderId.equals(sellerId)) {
             throw new SellerBidException("Seller cannot bid on their own auction");
         }
-        // INV-A1: bid must be strictly greater than currentPrice
-        if (!amount.isGreaterThan(currentPrice)) {
+        // INV-A1 (B7): first bid must reach startingPrice; subsequent bids must clear
+        // currentPrice by at least €1.
+        Money minimumBid = bids.isEmpty() ? startingPrice : currentPrice.add(MIN_BID_INCREMENT);
+        if (!amount.isGreaterThanOrEqualTo(minimumBid)) {
             throw new BidTooLowException(
-                    "Bid " + amount + " must be strictly greater than current price " + currentPrice);
+                    "Bid " + amount + " is below the minimum acceptable bid " + minimumBid);
         }
 
         // Mark previous winning bid as non-winning
