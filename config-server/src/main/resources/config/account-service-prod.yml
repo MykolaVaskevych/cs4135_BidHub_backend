@@ -3,10 +3,10 @@ server:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/bidhub_account}
+    url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:bidhub}
-    password: ${DB_PASSWORD:bidhub}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   h2:
     console:
       enabled: false
@@ -19,7 +19,7 @@ bidhub:
   jwt:
     secret: ${JWT_SECRET}
   internal:
-    api-token: ${INTERNAL_API_TOKEN:}
+    api-token: ${INTERNAL_API_TOKEN}
 
 logging:
   level:
