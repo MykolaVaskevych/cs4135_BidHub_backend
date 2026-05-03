@@ -8,6 +8,7 @@ import com.bidhub.payment.model.TransactionType;
 import com.bidhub.payment.model.Wallet;
 import com.bidhub.payment.repository.TransactionRepository;
 import com.bidhub.payment.repository.WalletRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,26 @@ public class WalletService {
 
     @Transactional
     public WalletResponse deduct(UUID userId, DeductRequest request) {
+        ChargeOutcome outcome =
+                chargeInternal(userId, request.amount(), request.description(), "Payment deduction");
+        return toResponse(outcome.wallet());
+    }
+
+    @Transactional
+    public ChargeResponse charge(UUID userId, ChargeRequest request) {
+        ChargeOutcome outcome =
+                chargeInternal(userId, request.amount(), request.description(), "Payment charge");
+        Wallet wallet = outcome.wallet();
+        return new ChargeResponse(
+                outcome.transaction().getTransactionId(),
+                wallet.getWalletId(),
+                wallet.getUserId(),
+                wallet.getBalance(),
+                wallet.getCurrency());
+    }
+
+    private ChargeOutcome chargeInternal(
+            UUID userId, BigDecimal amount, String description, String fallbackDescription) {
         Wallet wallet =
                 walletRepository
                         .findByUserId(userId)
@@ -66,26 +87,26 @@ public class WalletService {
                                         new WalletNotFoundException(
                                                 "Wallet not found for user: " + userId));
 
-        if (wallet.getBalance().compareTo(request.amount()) < 0) {
+        if (wallet.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(
                     "Insufficient funds. Balance: " + wallet.getBalance());
         }
 
-        wallet.deduct(request.amount());
+        wallet.deduct(amount);
 
-        transactionRepository.save(
-                Transaction.builder()
-                        .wallet(wallet)
-                        .amount(request.amount())
-                        .type(TransactionType.PAYMENT)
-                        .description(
-                                request.description() != null
-                                        ? request.description()
-                                        : "Payment deduction")
-                        .build());
+        Transaction tx =
+                transactionRepository.save(
+                        Transaction.builder()
+                                .wallet(wallet)
+                                .amount(amount)
+                                .type(TransactionType.PAYMENT)
+                                .description(description != null ? description : fallbackDescription)
+                                .build());
 
-        return toResponse(walletRepository.save(wallet));
+        return new ChargeOutcome(walletRepository.save(wallet), tx);
     }
+
+    private record ChargeOutcome(Wallet wallet, Transaction transaction) {}
 
     @Transactional(readOnly = true)
     public List<TransactionResponse> getTransactionHistory(UUID userId) {

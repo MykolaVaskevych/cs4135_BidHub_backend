@@ -33,6 +33,12 @@ public class WalletController {
         return ResponseEntity.ok(walletService.deduct(UUID.fromString(userId), request));
     }
 
+    @PostMapping("/wallet/charge")
+    public ResponseEntity<ChargeResponse> charge(
+            @RequestHeader("X-User-Id") String userId, @Valid @RequestBody ChargeRequest request) {
+        return ResponseEntity.ok(walletService.charge(UUID.fromString(userId), request));
+    }
+
     @GetMapping("/transactions")
     public ResponseEntity<List<TransactionResponse>> getTransactions(
             @RequestHeader("X-User-Id") String userId) {

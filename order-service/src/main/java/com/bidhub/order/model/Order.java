@@ -77,4 +77,12 @@ public class Order {
     public void markDisputed() {
         this.status = OrderStatus.DISPUTED;
     }
+
+    public void cancel() {
+        if (this.status != OrderStatus.AWAITING_COLLECTION) {
+            throw new IllegalStateException(
+                    "Can only cancel from AWAITING_COLLECTION state, was: " + this.status);
+        }
+        this.status = OrderStatus.CANCELLED;
+    }
 }

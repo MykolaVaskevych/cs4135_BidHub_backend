@@ -65,4 +65,9 @@ public class OrderController {
     public ResponseEntity<OrderResponse> confirmDelivery(@PathVariable UUID orderId) {
         return ResponseEntity.ok(orderService.confirmDelivery(orderId));
     }
+
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<OrderResponse> cancel(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(orderService.cancelOrder(orderId));
+    }
 }

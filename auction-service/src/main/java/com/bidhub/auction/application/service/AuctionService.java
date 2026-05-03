@@ -18,13 +18,20 @@ import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.domain.repository.BidRepository;
 import com.bidhub.auction.domain.repository.ListingRepository;
 import com.bidhub.auction.domain.service.BidValidationService;
+import com.bidhub.auction.infrastructure.acl.AccountClient;
+import com.bidhub.auction.infrastructure.acl.AddressInfo;
 import com.bidhub.auction.infrastructure.acl.CatalogueClient;
 import com.bidhub.auction.infrastructure.acl.DeliveryClient;
 import com.bidhub.auction.infrastructure.acl.NotificationClient;
+import com.bidhub.auction.infrastructure.acl.OrderClient;
+import com.bidhub.auction.infrastructure.acl.PaymentClient;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,10 +41,15 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Transactional
 public class AuctionService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
+
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final ListingRepository listingRepository;
     private final BidValidationService bidValidationService;
+    private final AccountClient accountClient;
+    private final PaymentClient paymentClient;
+    private final OrderClient orderClient;
     private final DeliveryClient deliveryClient;
     private final NotificationClient notificationClient;
     private final CatalogueClient catalogueClient;
@@ -47,6 +59,9 @@ public class AuctionService {
             BidRepository bidRepository,
             ListingRepository listingRepository,
             BidValidationService bidValidationService,
+            AccountClient accountClient,
+            PaymentClient paymentClient,
+            OrderClient orderClient,
             DeliveryClient deliveryClient,
             NotificationClient notificationClient,
             CatalogueClient catalogueClient) {
@@ -54,6 +69,9 @@ public class AuctionService {
         this.bidRepository = bidRepository;
         this.listingRepository = listingRepository;
         this.bidValidationService = bidValidationService;
+        this.accountClient = accountClient;
+        this.paymentClient = paymentClient;
+        this.orderClient = orderClient;
         this.deliveryClient = deliveryClient;
         this.notificationClient = notificationClient;
         this.catalogueClient = catalogueClient;
@@ -147,23 +165,101 @@ public class AuctionService {
                         .orElseThrow(() -> new AuctionNotFoundException(auctionId));
 
         UUID sellerId = auction.getSellerId();
-        auction.buyNow(buyerId);
-        AuctionResponse response = AuctionResponse.from(auctionRepository.save(auction));
-        catalogueClient.updateStatusAsync(auction.getListingId(), "SOLD");
-        deliveryClient.createJobAsync(
-                auctionId, sellerId, buyerId,
-                auction.getBuyNowPrice().getAmount());
-        final String auctionIdStr = auctionId.toString();
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                notificationClient.sendAsync(
-                        sellerId, "AUCTION_ENDED_SELLER", Map.of("auctionId", auctionIdStr));
-                notificationClient.sendAsync(
-                        buyerId, "AUCTION_WON", Map.of("auctionId", auctionIdStr));
+        if (auction.getStatus() != AuctionStatus.ACTIVE) {
+            throw new IllegalAuctionStateException(
+                    "Buy-now is only available on ACTIVE auctions; current status: "
+                            + auction.getStatus());
+        }
+        if (auction.getBuyNowPrice() == null) {
+            throw new IllegalAuctionStateException("This auction does not have a buy-now price");
+        }
+        if (buyerId.equals(sellerId)) {
+            throw new IllegalAuctionStateException("Seller cannot buy-now their own auction");
+        }
+        BigDecimal price = auction.getBuyNowPrice().getAmount();
+
+        AddressInfo buyerAddress = accountClient.defaultAddressOf(buyerId, "buyer");
+        AddressInfo sellerAddress = accountClient.defaultAddressOf(sellerId, "seller");
+
+        PaymentClient.ChargeResult charge =
+                paymentClient.charge(buyerId, price, "buy-now auction " + auctionId);
+        UUID transactionId = charge.transactionId();
+
+        UUID orderId = null;
+        Auction saved;
+        try {
+            orderId = orderClient.createOrder(auctionId, buyerId, sellerId, price);
+            deliveryClient.createDeliveryJob(
+                    orderId,
+                    auctionId,
+                    sellerId,
+                    buyerId,
+                    sellerAddress,
+                    buyerAddress,
+                    transactionId,
+                    price);
+            auction.buyNow(buyerId);
+            saved = auctionRepository.saveAndFlush(auction);
+        } catch (RuntimeException ex) {
+            if (orderId != null) {
+                tryCancelOrder(orderId);
             }
-        });
+            tryRefund(buyerId, price);
+            throw ex;
+        }
+
+        AuctionResponse response = AuctionResponse.from(saved);
+        final UUID finalOrderId = orderId;
+        final UUID listingId = saved.getListingId();
+        final String auctionIdStr = auctionId.toString();
+        afterCommitOrRunNow(
+                () -> {
+                    catalogueClient.updateStatusAsync(listingId, "SOLD");
+                    Map<String, String> vars =
+                            Map.of(
+                                    "auctionId", auctionIdStr,
+                                    "orderId", finalOrderId.toString());
+                    notificationClient.sendAsync(sellerId, "AUCTION_ENDED_SELLER", vars);
+                    notificationClient.sendAsync(buyerId, "AUCTION_WON", vars);
+                });
         return response;
+    }
+
+    private void afterCommitOrRunNow(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            action.run();
+                        }
+                    });
+        } else {
+            action.run();
+        }
+    }
+
+    private void tryCancelOrder(UUID orderId) {
+        try {
+            orderClient.cancelOrder(orderId);
+        } catch (Exception ex) {
+            log.error(
+                    "Compensation failed: could not cancel orderId={}; manual reconciliation required",
+                    orderId,
+                    ex);
+        }
+    }
+
+    private void tryRefund(UUID buyerId, BigDecimal amount) {
+        try {
+            paymentClient.refund(buyerId, amount);
+        } catch (Exception ex) {
+            log.error(
+                    "Compensation failed: could not refund buyerId={} amount={}; manual reconciliation required",
+                    buyerId,
+                    amount,
+                    ex);
+        }
     }
 
     public AuctionResponse cancelAuction(UUID sellerId, UUID auctionId) {

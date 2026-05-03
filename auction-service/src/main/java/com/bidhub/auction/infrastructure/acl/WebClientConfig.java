@@ -44,4 +44,20 @@ public class WebClientConfig {
                 .baseUrl(catalogueUrl)
                 .build();
     }
+
+    @Bean
+    public WebClient paymentWebClient(
+            @Value("${payment.service.url:http://payment-service:8085}") String paymentUrl) {
+        return WebClient.builder()
+                .baseUrl(paymentUrl)
+                .build();
+    }
+
+    @Bean
+    public WebClient orderWebClient(
+            @Value("${order.service.url:http://order-service:8084}") String orderUrl) {
+        return WebClient.builder()
+                .baseUrl(orderUrl)
+                .build();
+    }
 }
