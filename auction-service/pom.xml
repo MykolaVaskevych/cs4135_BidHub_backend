@@ -56,6 +56,11 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
 		</dependency>
+		<!-- AMQP / RabbitMQ for settlement saga choreography -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+		</dependency>
 		<!-- Swagger UI + OpenAPI 3 -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
