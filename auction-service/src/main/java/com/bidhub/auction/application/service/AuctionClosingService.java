@@ -4,7 +4,6 @@ import com.bidhub.auction.domain.model.Auction;
 import com.bidhub.auction.domain.model.AuctionStatus;
 import com.bidhub.auction.domain.repository.AuctionRepository;
 import com.bidhub.auction.infrastructure.acl.CatalogueClient;
-import com.bidhub.auction.infrastructure.acl.DeliveryClient;
 import com.bidhub.auction.infrastructure.acl.NotificationClient;
 import java.time.Instant;
 import java.util.List;
@@ -24,17 +23,14 @@ public class AuctionClosingService {
     private static final Logger log = LoggerFactory.getLogger(AuctionClosingService.class);
 
     private final AuctionRepository auctionRepository;
-    private final DeliveryClient deliveryClient;
     private final NotificationClient notificationClient;
     private final CatalogueClient catalogueClient;
 
     public AuctionClosingService(
             AuctionRepository auctionRepository,
-            DeliveryClient deliveryClient,
             NotificationClient notificationClient,
             CatalogueClient catalogueClient) {
         this.auctionRepository = auctionRepository;
-        this.deliveryClient = deliveryClient;
         this.notificationClient = notificationClient;
         this.catalogueClient = catalogueClient;
     }
@@ -61,14 +57,6 @@ public class AuctionClosingService {
         final UUID sellerId = auction.getSellerId();
         final boolean sold = auction.getStatus() == AuctionStatus.SOLD;
         final UUID buyerId = sold ? auction.highestBid().get().getBidderId() : null;
-
-        if (sold) {
-            deliveryClient.createJobAsync(
-                    auction.getAuctionId(),
-                    sellerId,
-                    buyerId,
-                    auction.getCurrentPrice().getAmount());
-        }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override

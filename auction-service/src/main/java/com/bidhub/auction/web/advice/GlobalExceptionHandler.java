@@ -3,8 +3,11 @@ package com.bidhub.auction.web.advice;
 import com.bidhub.auction.domain.exception.AuctionNotFoundException;
 import com.bidhub.auction.domain.exception.BidTooLowException;
 import com.bidhub.auction.domain.exception.BidderValidationUnavailableException;
+import com.bidhub.auction.domain.exception.BuyNowDownstreamException;
 import com.bidhub.auction.domain.exception.IllegalAuctionStateException;
+import com.bidhub.auction.domain.exception.InsufficientWalletFundsException;
 import com.bidhub.auction.domain.exception.ListingNotFoundException;
+import com.bidhub.auction.domain.exception.MissingShippingAddressException;
 import com.bidhub.auction.domain.exception.SellerBidException;
 import java.time.Instant;
 import java.util.Map;
@@ -53,6 +56,34 @@ public class GlobalExceptionHandler {
                 ProblemDetail.forStatusAndDetail(
                         HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
         pd.setTitle("Bidder Validation Unavailable");
+        pd.setProperty("retryable", true);
+        return pd;
+    }
+
+    @ExceptionHandler(MissingShippingAddressException.class)
+    public ProblemDetail handleMissingShippingAddress(MissingShippingAddressException ex) {
+        ProblemDetail pd =
+                ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        pd.setTitle("Missing Shipping Address");
+        pd.setProperty("role", ex.getRole());
+        pd.setProperty("userId", ex.getUserId().toString());
+        return pd;
+    }
+
+    @ExceptionHandler(InsufficientWalletFundsException.class)
+    public ProblemDetail handleInsufficientFunds(InsufficientWalletFundsException ex) {
+        ProblemDetail pd =
+                ProblemDetail.forStatusAndDetail(HttpStatus.PAYMENT_REQUIRED, ex.getMessage());
+        pd.setTitle("Insufficient Wallet Funds");
+        return pd;
+    }
+
+    @ExceptionHandler(BuyNowDownstreamException.class)
+    public ProblemDetail handleBuyNowDownstream(BuyNowDownstreamException ex) {
+        ProblemDetail pd =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        pd.setTitle("Buy-Now Downstream Failure");
         pd.setProperty("retryable", true);
         return pd;
     }

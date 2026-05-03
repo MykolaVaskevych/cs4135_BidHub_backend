@@ -103,6 +103,17 @@ public class OrderService {
         return toResponse(orderRepository.save(order));
     }
 
+    @Transactional
+    public OrderResponse cancelOrder(UUID orderId) {
+        Order order = findOrder(orderId);
+        try {
+            order.cancel();
+        } catch (IllegalStateException e) {
+            throw new InvalidOrderStateException(e.getMessage());
+        }
+        return toResponse(orderRepository.save(order));
+    }
+
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByStatus(OrderStatus status) {
         return orderRepository.findByStatus(status).stream().map(this::toResponse).toList();
