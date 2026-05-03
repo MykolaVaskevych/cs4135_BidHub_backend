@@ -16,9 +16,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final HeaderAuthenticationFilter headerAuthenticationFilter;
+    private final InternalApiTokenFilter internalApiTokenFilter;
 
-    public SecurityConfig(HeaderAuthenticationFilter headerAuthenticationFilter) {
+    public SecurityConfig(
+            HeaderAuthenticationFilter headerAuthenticationFilter,
+            InternalApiTokenFilter internalApiTokenFilter) {
         this.headerAuthenticationFilter = headerAuthenticationFilter;
+        this.internalApiTokenFilter = internalApiTokenFilter;
     }
 
     @Bean
@@ -30,7 +34,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated())
+                .addFilterBefore(
+                        internalApiTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(
                         headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

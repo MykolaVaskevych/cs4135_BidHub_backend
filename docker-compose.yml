@@ -1,3 +1,8 @@
+# Backend-only stack (no frontend).
+# For full-stack deployment use the root-level docker-compose.yml.
+# This file expects the same `.env` file as root — copy it here:
+#   cp ../.env backend/.env  (or symlink it)
+
 services:
 
   # ── Infrastructure ─────────────────────────────────────────────────────────
@@ -6,16 +11,16 @@ services:
     image: postgres:16
     container_name: bidhub-postgres
     environment:
-      POSTGRES_USER: bidhub
-      POSTGRES_PASSWORD: bidhub_dev_password
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: bidhub_accounts
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - bidhub_postgres_data:/var/lib/postgresql/data
       - ./docker/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bidhub -d bidhub_accounts"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d bidhub_accounts"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -65,15 +70,23 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_accounts
-      DB_USERNAME: bidhub
-      DB_PASSWORD: bidhub_dev_password
-    ports:
-      - "8081:8081"
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in .env}
+    expose:
+      - "8081"
     depends_on:
       postgres:
         condition: service_healthy
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   catalog-service:
     build:
@@ -82,11 +95,17 @@ services:
     container_name: bidhub-catalog
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     depends_on:
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   auction-service:
     build:
@@ -98,15 +117,21 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_auction
-      DB_USERNAME: bidhub
-      DB_PASSWORD: bidhub_dev_password
-    ports:
-      - "8083:8083"
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    expose:
+      - "8083"
     depends_on:
       postgres:
         condition: service_healthy
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   order-service:
     build:
@@ -114,12 +139,19 @@ services:
       dockerfile: order-service/Dockerfile
     container_name: bidhub-order
     environment:
+      CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    ports:
-      - "8084:8084"
+    expose:
+      - "8084"
     depends_on:
-      eureka-server:
+      config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   payment-service:
     build:
@@ -127,12 +159,19 @@ services:
       dockerfile: payment-service/Dockerfile
     container_name: bidhub-payment
     environment:
+      CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    ports:
-      - "8085:8085"
+    expose:
+      - "8085"
     depends_on:
-      eureka-server:
+      config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   notification-service:
     build:
@@ -144,13 +183,13 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_notifications
-      DB_USERNAME: bidhub
-      DB_PASSWORD: bidhub_dev_password
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       DB_DRIVER: org.postgresql.Driver
       JPA_DDL: update
       JPA_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-    ports:
-      - "8086:8086"
+    expose:
+      - "8086"
     depends_on:
       postgres:
         condition: service_healthy
@@ -158,6 +197,12 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   delivery-service:
     build:
@@ -169,13 +214,13 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_delivery
-      DB_USERNAME: bidhub
-      DB_PASSWORD: bidhub_dev_password
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       DB_DRIVER: org.postgresql.Driver
       JPA_DDL: update
       JPA_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-    ports:
-      - "8088:8088"
+    expose:
+      - "8088"
     depends_on:
       postgres:
         condition: service_healthy
@@ -183,6 +228,12 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   admin-service:
     build:
@@ -194,15 +245,21 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       DB_URL: jdbc:postgresql://postgres:5432/bidhub_admin
-      DB_USERNAME: bidhub
-      DB_PASSWORD: bidhub_dev_password
-    ports:
-      - "8087:8087"
+      DB_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    expose:
+      - "8087"
     depends_on:
       postgres:
         condition: service_healthy
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8087/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   api-gateway:
     build:
@@ -211,13 +268,20 @@ services:
     container_name: bidhub-gateway
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-bidhub-local-dev-secret-key-minimum-32-characters-long}
-      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWEDORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in .env}
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_GLOBALCORS_CORSCONFIGURATIONS_[/**]_ALLOWEDORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:5173}
     ports:
       - "8080:8080"
     depends_on:
       eureka-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
 volumes:
   bidhub_postgres_data:
