@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -20,14 +21,17 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     private static final String ADMIN_PATH_PATTERN = "/api/admin/**";
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 
     private final JwtUtil jwtUtil;
     private final List<String> openPaths;
+    private final String internalToken;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     public AuthenticationFilter(JwtUtil jwtUtil, JwtProperties properties) {
         this.jwtUtil = jwtUtil;
         this.openPaths = properties.getAuth().getOpenPaths();
+        this.internalToken = properties.getInternal().getApiToken();
     }
 
     @Override
@@ -35,7 +39,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
 
         if (isOpen(path)) {
-            return chain.filter(exchange);
+            ServerHttpRequest sanitized = sanitizeAndAttachInternalToken(exchange);
+            return chain.filter(exchange.mutate().request(sanitized).build());
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -61,11 +66,33 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest mutated =
                 exchange.getRequest()
                         .mutate()
-                        .header("X-User-Id", claims.getSubject())
-                        .header("X-User-Roles", roles)
+                        .headers(headers -> {
+                            headers.remove("X-User-Id");
+                            headers.remove("X-User-Roles");
+                            headers.remove(INTERNAL_TOKEN_HEADER);
+                            headers.set("X-User-Id", claims.getSubject());
+                            headers.set("X-User-Roles", roles);
+                            if (StringUtils.hasText(internalToken)) {
+                                headers.set(INTERNAL_TOKEN_HEADER, internalToken);
+                            }
+                        })
                         .build();
 
         return chain.filter(exchange.mutate().request(mutated).build());
+    }
+
+    private ServerHttpRequest sanitizeAndAttachInternalToken(ServerWebExchange exchange) {
+        return exchange.getRequest()
+                .mutate()
+                .headers(headers -> {
+                    headers.remove("X-User-Id");
+                    headers.remove("X-User-Roles");
+                    headers.remove(INTERNAL_TOKEN_HEADER);
+                    if (StringUtils.hasText(internalToken)) {
+                        headers.set(INTERNAL_TOKEN_HEADER, internalToken);
+                    }
+                })
+                .build();
     }
 
     private boolean isOpen(String path) {

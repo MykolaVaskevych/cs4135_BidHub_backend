@@ -21,8 +21,11 @@ management:
 
 bidhub:
   jwt:
+    secret: ${JWT_SECRET}
     expiration-ms: 3600000
     issuer: bidhub-account-service
+  internal:
+    api-token: ${INTERNAL_API_TOKEN:}
 
 logging:
   level:

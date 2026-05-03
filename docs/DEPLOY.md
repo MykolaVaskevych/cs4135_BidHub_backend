@@ -1,28 +1,39 @@
 # BidHub Deployment Guide
 
-## Local Development (Docker Compose)
+> **Single canonical entry point.** The full stack (backend + frontend) is started from the
+> repository root with `docker compose up --build`. See [`../../README.md`](../../README.md)
+> for that workflow and the required `.env` setup. **This file documents two narrower
+> workflows: backend-only local debugging and Railway cloud deployment.**
 
-Run the full stack locally with:
+## Backend-only local stack (no frontend)
+
+Use this when you are iterating on a single backend service and do not need the React
+frontend container running. The compose file at [`backend/docker-compose.yml`](../docker-compose.yml)
+is functionally equivalent to the root one minus the frontend entry.
+
+The same `.env` variables apply. Either copy the root `.env` into `backend/`:
 
 ```bash
+cp .env backend/.env       # from the repo root
 cd backend
 docker compose up --build
 ```
 
-Services start in the correct dependency order. First boot takes ~3-5 minutes to build all images.
+…or symlink it (`ln -s ../.env backend/.env` on macOS/Linux). Compose loads `.env` from the
+directory in which you run the command.
 
-| Service             | URL                          |
-|---------------------|------------------------------|
-| API Gateway         | http://localhost:8080        |
-| Eureka Dashboard    | http://localhost:8761        |
-| Config Server       | http://localhost:8888        |
-| Account Service     | http://localhost:8081        |
-| Catalog Service     | http://localhost:8082        |
-| Auction Service     | http://localhost:8083        |
-| Order Service       | http://localhost:8084        |
-| Payment Service     | http://localhost:8085        |
-| Notification Service| http://localhost:8086        |
-| Admin Service       | http://localhost:8087        |
+Services bound to host ports:
+
+| Service          | URL                   |
+|------------------|-----------------------|
+| API Gateway      | http://localhost:8080 |
+| Eureka Dashboard | http://localhost:8761 |
+| Config Server    | http://localhost:8888 |
+
+Account / auction / order / payment / notification / admin / delivery are reachable only on
+the internal Docker network — call them via the gateway. Account-service additionally
+requires `X-Internal-Token` (the gateway attaches it); see the security notes in the root
+README.
 
 ### Useful commands
 
@@ -129,6 +140,8 @@ EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/
 DB_URL=${{Postgres.DATABASE_URL}}   # or set manually: jdbc:postgresql://<host>:<port>/bidhub_accounts
 DB_USERNAME=${{Postgres.PGUSER}}
 DB_PASSWORD=${{Postgres.PGPASSWORD}}
+JWT_SECRET=<same value as api-gateway>
+INTERNAL_API_TOKEN=<same value as api-gateway>
 ```
 
 > **Why `CONFIG_SERVER_URL` not `SPRING_CONFIG_IMPORT`**: Spring Boot resolves `spring.config.import` from the config file before env var overrides apply. The `${CONFIG_SERVER_URL:http://localhost:8888}` placeholder in `application.yml/properties` is resolved at file-read time using env vars, which makes the override work reliably.
@@ -162,8 +175,12 @@ DB_PASSWORD=${{Postgres.PGPASSWORD}}
 ```
 EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server.railway.internal:8761/eureka/
 JWT_SECRET=<generate a strong random secret>
+INTERNAL_API_TOKEN=<generate a separate strong random token>
 CORS_ORIGINS=https://your-frontend.railway.app
 ```
+
+> `INTERNAL_API_TOKEN` must match across api-gateway and account-service in the same
+> environment. Rotate it independently of `JWT_SECRET`.
 
 ### Creating additional databases in Railway Postgres
 

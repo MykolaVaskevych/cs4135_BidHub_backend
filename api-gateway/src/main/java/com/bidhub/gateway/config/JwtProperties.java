@@ -14,6 +14,7 @@ public class JwtProperties {
 
     private Jwt jwt = new Jwt();
     private Auth auth = new Auth();
+    private Internal internal = new Internal();
 
     @Getter
     @Setter
@@ -25,5 +26,11 @@ public class JwtProperties {
     @Setter
     public static class Auth {
         private List<String> openPaths = List.of();
+    }
+
+    @Getter
+    @Setter
+    public static class Internal {
+        private String apiToken;
     }
 }
