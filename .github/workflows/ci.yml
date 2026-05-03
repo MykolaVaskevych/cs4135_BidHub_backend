@@ -59,6 +59,9 @@ jobs:
         run: ./mvnw -B package -DskipTests
 
       - name: Start API Gateway
+        env:
+          JWT_SECRET: default-dev-secret-do-not-use-in-production
+          INTERNAL_API_TOKEN: ci-internal-token-do-not-use-in-production
         run: |
           nohup java -jar api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
           echo $! > app.pid
