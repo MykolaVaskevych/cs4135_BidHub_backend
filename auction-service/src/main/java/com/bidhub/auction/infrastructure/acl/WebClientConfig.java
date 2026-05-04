@@ -1,7 +1,6 @@
 package com.bidhub.auction.infrastructure.acl;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -10,14 +9,20 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WebClientConfig {
 
     /**
-     * Load-balanced WebClient that resolves "account-service" via Eureka.
-     * Used by AccountClientBidValidationService.
+     * WebClient for account-service used by AccountClientBidValidationService and AccountClient.
+     * The base URL includes the explicit port; Docker DNS resolves the hostname to the
+     * account-service container, so Eureka-based load balancing is not required here. The
+     * {@code X-Internal-Token} header is wired as a default header on the bean once, so every
+     * caller of this WebClient is authenticated against account-service automatically and new
+     * callers inherit it without having to remember the auth wiring.
      */
     @Bean
-    @LoadBalanced
-    public WebClient accountWebClient() {
+    public WebClient accountWebClient(
+            @Value("${account.service.url:http://account-service:8081}") String accountUrl,
+            @Value("${INTERNAL_API_TOKEN:}") String internalToken) {
         return WebClient.builder()
-                .baseUrl("http://account-service")
+                .baseUrl(accountUrl)
+                .defaultHeader("X-Internal-Token", internalToken)
                 .build();
     }
 
