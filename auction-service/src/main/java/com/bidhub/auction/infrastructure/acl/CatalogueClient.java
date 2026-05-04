@@ -13,7 +13,8 @@ import reactor.core.scheduler.Schedulers;
 
 /**
  * ACL: pushes auction lifecycle events to catalogue-service as REST calls.
- * Replaces the Kafka/RabbitMQ event bus. Fire-and-forget — errors are logged, never thrown.
+ * Temporary REST projection update until catalogue event consumers are implemented.
+ * Fire-and-forget — errors are logged, never thrown.
  */
 @Component
 public class CatalogueClient {

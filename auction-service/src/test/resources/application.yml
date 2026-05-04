@@ -12,3 +12,10 @@ spring:
 eureka:
   client:
     enabled: false
+
+bidhub:
+  outbox:
+    publisher:
+      enabled: false
+
+spring.rabbitmq.listener.simple.auto-startup: false
